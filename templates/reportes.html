@@ -1,0 +1,347 @@
+{% extends "base.html" %}
+
+{% block title %}UNIAGRARIA - Reportes Avanzados{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Encabezado -->
+    <div class="d-flex justify-content-between align-items-center mb-4 animate-slide-in">
+        <div>
+            <h2 class="text-success">
+                <i class="fas fa-chart-bar me-2"></i>
+                Reportes y Estadísticas
+            </h2>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Reportes</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Filtros de Reportes -->
+    <div class="card card-uniagraria mb-4 animate-slide-in" style="animation-delay: 0.1s;">
+        <div class="card-header-uniagraria">
+            <h5 class="mb-0">
+                <i class="fas fa-filter me-2"></i>
+                Filtros de Reporte
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <label class="form-label fw-bold text-success">
+                        <i class="fas fa-calendar me-1"></i>Período
+                    </label>
+                    <select class="form-select" id="periodoSelect">
+                        <option value="2026-1" selected>2026 - Primer Semestre</option>
+                        <option value="2026-2">2026 - Segundo Semestre</option>
+                    </select>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label fw-bold text-success">
+                        <i class="fas fa-city me-1"></i>Municipio
+                    </label>
+                    <select class="form-select select2" id="municipioSelect">
+                        <option value="">Todos los municipios</option>
+                        {% for m in municipios %}
+                        <option value="{{ m.id }}">{{ m.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2 mb-3">
+                    <label class="form-label fw-bold text-success">
+                        <i class="fas fa-check-circle me-1"></i>Estado
+                    </label>
+                    <select class="form-select" id="estadoSelect">
+                        <option value="">Todos</option>
+                        <option value="completado">Completados</option>
+                        <option value="pendiente">Pendientes</option>
+                    </select>
+                </div>
+                <div class="col-md-2 mb-3">
+                    <label class="form-label fw-bold text-success">
+                        <i class="fas fa-calendar-alt me-1"></i>Desde
+                    </label>
+                    <input type="date" class="form-control" id="fechaInicio">
+                </div>
+                <div class="col-md-2 mb-3">
+                    <label class="form-label fw-bold text-success">
+                        <i class="fas fa-calendar-alt me-1"></i>Hasta
+                    </label>
+                    <input type="date" class="form-control" id="fechaFin">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-12">
+                    <button class="btn btn-uniagraria" onclick="generarReporte()">
+                        <i class="fas fa-chart-line me-2"></i>
+                        Generar Reporte
+                    </button>
+                    <button class="btn btn-outline-secondary" onclick="limpiarFiltros()">
+                        <i class="fas fa-undo me-2"></i>
+                        Limpiar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resultados del Reporte -->
+    <div id="resultadoReporte" style="display: none;">
+        <!-- KPIs -->
+        <div class="row mb-4" id="kpiContainer"></div>
+        
+        <!-- Gráficos -->
+        <div class="row mb-4">
+            <div class="col-lg-6 mb-4">
+                <div class="dashboard-card">
+                    <h6 class="text-success mb-3">
+                        <i class="fas fa-graduation-cap me-2"></i>
+                        Distribución por Grado
+                    </h6>
+                    <div id="graficoGrados" style="height: 300px;"></div>
+                </div>
+            </div>
+            <div class="col-lg-6 mb-4">
+                <div class="dashboard-card">
+                    <h6 class="text-success mb-3">
+                        <i class="fas fa-book me-2"></i>
+                        Programas de Interés
+                    </h6>
+                    <div id="graficoProgramas" style="height: 300px;"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tabla de Datos -->
+        <div class="card card-uniagraria">
+            <div class="card-header-uniagraria">
+                <h5 class="mb-0">
+                    <i class="fas fa-table me-2"></i>
+                    Detalle de Registros
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover" id="tablaReporte"></table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Exportar -->
+    <div class="fixed-bottom-right mb-4 me-4">
+        <div class="btn-group-vertical">
+            <button class="btn btn-uniagraria" onclick="exportarExcel()">
+                <i class="fas fa-file-excel me-2"></i>
+                Excel
+            </button>
+            <button class="btn btn-naranja mt-2" onclick="exportarPDF()">
+                <i class="fas fa-file-pdf me-2"></i>
+                PDF
+            </button>
+            <button class="btn btn-outline-uniagraria mt-2" onclick="exportarJSON()">
+                <i class="fas fa-file-code me-2"></i>
+                JSON
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+.fixed-bottom-right {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1000;
+}
+</style>
+
+<script>
+let datosReporte = null;
+
+function generarReporte() {
+    const params = new URLSearchParams({
+        periodo: document.getElementById('periodoSelect').value,
+        municipio_id: document.getElementById('municipioSelect').value || '',
+        estado: document.getElementById('estadoSelect').value || '',
+        fecha_inicio: document.getElementById('fechaInicio').value || '',
+        fecha_fin: document.getElementById('fechaFin').value || ''
+    });
+    
+    toastr.info('Generando reporte...');
+    
+    fetch(`/api/reportes/general?${params.toString()}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                toastr.error(data.error);
+                return;
+            }
+            
+            datosReporte = data;
+            mostrarResultados(data);
+            toastr.success('Reporte generado exitosamente');
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            toastr.error('Error al generar el reporte');
+        });
+}
+
+function mostrarResultados(data) {
+    document.getElementById('resultadoReporte').style.display = 'block';
+    
+    // KPIs
+    const stats = data.estadisticas;
+    const kpiHTML = `
+        <div class="col-md-3 mb-3">
+            <div class="estadistica-card">
+                <div class="estadistica-numero">${stats.total || 0}</div>
+                <div class="estadistica-titulo">Total Registros</div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="estadistica-card">
+                <div class="estadistica-numero">${stats.completados || 0}</div>
+                <div class="estadistica-titulo">Completados</div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="estadistica-card">
+                <div class="estadistica-numero">${stats.pendientes || 0}</div>
+                <div class="estadistica-titulo">Pendientes</div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="estadistica-card">
+                <div class="estadistica-numero">${Object.keys(stats.por_municipio || {}).length || 0}</div>
+                <div class="estadistica-titulo">Municipios</div>
+            </div>
+        </div>
+    `;
+    document.getElementById('kpiContainer').innerHTML = kpiHTML;
+    
+    // Gráfico de Grados
+    const gradosData = stats.por_grado || {};
+    Plotly.newPlot('graficoGrados', [{
+        x: Object.keys(gradosData),
+        y: Object.values(gradosData),
+        type: 'bar',
+        marker: {
+            color: '#2E7D32'
+        }
+    }], {
+        title: 'Distribución por Grado',
+        margin: { t: 40, b: 40, l: 40, r: 40 }
+    });
+    
+    // Gráfico de Programas
+    const programasData = stats.por_programa || {};
+    Plotly.newPlot('graficoProgramas', [{
+        labels: Object.keys(programasData),
+        values: Object.values(programasData),
+        type: 'pie',
+        marker: {
+            colors: ['#2E7D32', '#4CAF50', '#FF8F00', '#26A69A', '#5C6BC0']
+        }
+    }], {
+        title: 'Programas de Interés',
+        margin: { t: 40, b: 40, l: 40, r: 40 }
+    });
+    
+    // Tabla de datos
+    let tablaHTML = `
+        <thead>
+            <tr class="table-success">
+                <th>ID</th>
+                <th>Estudiante</th>
+                <th>Municipio</th>
+                <th>Institución</th>
+                <th>Grado</th>
+                <th>Programa</th>
+                <th>Estado</th>
+                <th>Fecha</th>
+            </tr>
+        </thead>
+        <tbody>
+    `;
+    
+    data.registros.forEach(r => {
+        tablaHTML += `
+            <tr>
+                <td>#${r.id}</td>
+                <td><strong>${r.nombre || ''} ${r.apellidos || ''}</strong></td>
+                <td>${r.municipio || 'N/A'}</td>
+                <td>${r.institucion || 'N/A'}</td>
+                <td>${r.grado || 'N/A'}</td>
+                <td>${r.programa || 'N/A'}</td>
+                <td>
+                    <span class="badge ${r.estado === 'completado' ? 'bg-success' : 'bg-warning'}">
+                        ${r.estado || 'pendiente'}
+                    </span>
+                </td>
+                <td>${new Date(r.fecha).toLocaleDateString()}</td>
+            </tr>
+        `;
+    });
+    
+    tablaHTML += '</tbody>';
+    document.getElementById('tablaReporte').innerHTML = tablaHTML;
+}
+
+function exportarExcel() {
+    const params = new URLSearchParams({
+        periodo: document.getElementById('periodoSelect').value,
+        municipio_id: document.getElementById('municipioSelect').value || '',
+        estado: document.getElementById('estadoSelect').value || '',
+        fecha_inicio: document.getElementById('fechaInicio').value || '',
+        fecha_fin: document.getElementById('fechaFin').value || ''
+    });
+    
+    window.location.href = `/api/reportes/exportar/excel?${params.toString()}`;
+    toastr.success('Descargando archivo Excel...');
+}
+
+function exportarPDF() {
+    const params = new URLSearchParams({
+        periodo: document.getElementById('periodoSelect').value
+    });
+    
+    window.location.href = `/api/reportes/exportar/pdf?${params.toString()}`;
+    toastr.success('Descargando archivo PDF...');
+}
+
+function exportarJSON() {
+    if (!datosReporte) {
+        toastr.error('Genere un reporte primero');
+        return;
+    }
+    
+    const dataStr = JSON.stringify(datosReporte, null, 2);
+    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+    
+    const exportFileDefaultName = `reporte_uniagraria_${new Date().getTime()}.json`;
+    
+    const linkElement = document.createElement('a');
+    linkElement.setAttribute('href', dataUri);
+    linkElement.setAttribute('download', exportFileDefaultName);
+    linkElement.click();
+    
+    toastr.success('Descargando archivo JSON...');
+}
+
+function limpiarFiltros() {
+    document.getElementById('periodoSelect').value = '2026-1';
+    document.getElementById('municipioSelect').value = '';
+    document.getElementById('estadoSelect').value = '';
+    document.getElementById('fechaInicio').value = '';
+    document.getElementById('fechaFin').value = '';
+    
+    // Recargar Select2
+    $('#municipioSelect').trigger('change');
+}
+</script>
+{% endblock %}

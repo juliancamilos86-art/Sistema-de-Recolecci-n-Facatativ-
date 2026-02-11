@@ -1,0 +1,439 @@
+/* =========================================
+   UNIAGRARIA - SISTEMA DE RECOLECCIÓN 2026
+   ESTILOS PROFESIONALES - FACATATIVÁ
+   ========================================= */
+
+:root {
+    --verde-uniagraria: #2E7D32;
+    --verde-claro: #4CAF50;
+    --verde-oscuro: #1B5E20;
+    --naranja-uniagraria: #FF8F00;
+    --naranja-claro: #FFB74D;
+    --gris-claro: #f8f9fa;
+    --gris-medio: #e9ecef;
+    --gris-oscuro: #6c757d;
+    --blanco: #ffffff;
+    --negro: #000000;
+    --sombra-suave: 0 4px 6px rgba(0,0,0,0.05);
+    --sombra-fuerte: 0 8px 15px rgba(0,0,0,0.1);
+    --sombra-verde: 0 4px 6px rgba(46,125,50,0.1);
+    --border-radius: 12px;
+    --border-radius-sm: 8px;
+    --transition: all 0.3s ease;
+}
+
+/* ===== ESTILOS GENERALES ===== */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--gris-claro);
+    color: #333;
+    line-height: 1.6;
+}
+
+/* ===== TARJETAS ===== */
+.card-uniagraria {
+    border: none;
+    border-radius: var(--border-radius);
+    box-shadow: var(--sombra-suave);
+    transition: var(--transition);
+    overflow: hidden;
+}
+
+.card-uniagraria:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--sombra-fuerte);
+}
+
+.card-header-uniagraria {
+    background: linear-gradient(135deg, var(--verde-uniagraria), var(--verde-oscuro));
+    color: white;
+    padding: 1.2rem;
+    border-bottom: none;
+}
+
+.card-header-uniagraria h5, 
+.card-header-uniagraria h4 {
+    margin: 0;
+    font-weight: 600;
+}
+
+/* ===== BOTONES ===== */
+.btn-uniagraria {
+    background: var(--verde-uniagraria);
+    color: white;
+    border: none;
+    padding: 10px 25px;
+    border-radius: 25px;
+    font-weight: 600;
+    transition: var(--transition);
+    box-shadow: var(--sombra-verde);
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-uniagraria:hover {
+    background: var(--verde-oscuro);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(46,125,50,0.2);
+}
+
+.btn-uniagraria:active {
+    transform: translateY(0);
+}
+
+.btn-naranja {
+    background: var(--naranja-uniagraria);
+    color: white;
+    border: none;
+    padding: 10px 25px;
+    border-radius: 25px;
+    font-weight: 600;
+    transition: var(--transition);
+}
+
+.btn-naranja:hover {
+    background: #e65100;
+    color: white;
+    transform: translateY(-2px);
+}
+
+.btn-outline-uniagraria {
+    background: transparent;
+    color: var(--verde-uniagraria);
+    border: 2px solid var(--verde-uniagraria);
+    padding: 8px 20px;
+    border-radius: 25px;
+    font-weight: 600;
+    transition: var(--transition);
+}
+
+.btn-outline-uniagraria:hover {
+    background: var(--verde-uniagraria);
+    color: white;
+    transform: translateY(-2px);
+}
+
+/* ===== TABLAS ===== */
+.table-uniagraria {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 8px;
+}
+
+.table-uniagraria thead th {
+    background: linear-gradient(135deg, var(--verde-uniagraria), var(--verde-oscuro));
+    color: white;
+    font-weight: 600;
+    padding: 15px;
+    border: none;
+}
+
+.table-uniagraria thead th:first-child {
+    border-radius: 10px 0 0 10px;
+}
+
+.table-uniagraria thead th:last-child {
+    border-radius: 0 10px 10px 0;
+}
+
+.table-uniagraria tbody tr {
+    background: white;
+    box-shadow: var(--sombra-suave);
+    border-radius: 10px;
+    transition: var(--transition);
+}
+
+.table-uniagraria tbody tr:hover {
+    transform: scale(1.01);
+    box-shadow: var(--sombra-fuerte);
+}
+
+.table-uniagraria tbody td {
+    padding: 15px;
+    vertical-align: middle;
+    border: none;
+}
+
+.table-uniagraria tbody td:first-child {
+    border-radius: 10px 0 0 10px;
+}
+
+.table-uniagraria tbody td:last-child {
+    border-radius: 0 10px 10px 0;
+}
+
+/* ===== FORMULARIOS ===== */
+.form-control-uniagraria {
+    border: 2px solid var(--gris-medio);
+    border-radius: var(--border-radius-sm);
+    padding: 12px 15px;
+    transition: var(--transition);
+}
+
+.form-control-uniagraria:focus {
+    border-color: var(--verde-uniagraria);
+    box-shadow: 0 0 0 0.2rem rgba(46,125,50,0.25);
+    outline: none;
+}
+
+.form-label-uniagraria {
+    font-weight: 600;
+    color: var(--verde-oscuro);
+    margin-bottom: 8px;
+}
+
+/* ===== BADGES Y ETIQUETAS ===== */
+.badge-uniagraria {
+    background: var(--verde-claro);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.badge-naranja {
+    background: var(--naranja-uniagraria);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+}
+
+.badge-pendiente {
+    background: #ffc107;
+    color: #000;
+    padding: 6px 12px;
+    border-radius: 20px;
+}
+
+.badge-completado {
+    background: #28a745;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+}
+
+/* ===== ESTADÍSTICAS ===== */
+.estadistica-card {
+    background: white;
+    border-radius: var(--border-radius);
+    padding: 25px;
+    border-left: 5px solid var(--verde-uniagraria);
+    box-shadow: var(--sombra-suave);
+    transition: var(--transition);
+}
+
+.estadistica-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--sombra-fuerte);
+}
+
+.estadistica-numero {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--verde-uniagraria);
+    line-height: 1;
+}
+
+.estadistica-titulo {
+    color: var(--gris-oscuro);
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* ===== ANIMACIONES ===== */
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-slide-in {
+    animation: slideIn 0.5s ease-out;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.animate-pulse {
+    animation: pulse 2s infinite;
+}
+
+/* ===== DASHBOARD ===== */
+.dashboard-card {
+    background: white;
+    border-radius: var(--border-radius);
+    padding: 20px;
+    height: 100%;
+    box-shadow: var(--sombra-suave);
+}
+
+.dashboard-icon {
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, var(--verde-claro), var(--verde-uniagraria));
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 24px;
+}
+
+/* ===== FERIAS - GALERÍA ===== */
+.feria-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.feria-card img {
+    transition: var(--transition);
+}
+
+.feria-card:hover img {
+    transform: scale(1.1);
+}
+
+.feria-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+    color: white;
+    padding: 20px;
+    transform: translateY(100%);
+    transition: var(--transition);
+}
+
+.feria-card:hover .feria-overlay {
+    transform: translateY(0);
+}
+
+/* ===== DROPZONE PERSONALIZADO ===== */
+.dropzone-uniagraria {
+    border: 3px dashed var(--verde-claro);
+    border-radius: var(--border-radius);
+    background: rgba(76, 175, 80, 0.05);
+    padding: 40px;
+    text-align: center;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.dropzone-uniagraria:hover {
+    background: rgba(76, 175, 80, 0.1);
+    border-color: var(--verde-oscuro);
+}
+
+.dropzone-uniagraria i {
+    font-size: 48px;
+    color: var(--verde-uniagraria);
+    margin-bottom: 15px;
+}
+
+/* ===== PROGRESS BARS ===== */
+.progress-uniagraria {
+    height: 10px;
+    border-radius: 5px;
+    background: var(--gris-medio);
+    overflow: hidden;
+}
+
+.progress-bar-uniagraria {
+    background: linear-gradient(90deg, var(--verde-claro), var(--verde-uniagraria));
+    transition: width 0.5s ease;
+}
+
+/* ===== LOADING SPINNER ===== */
+.spinner-uniagraria {
+    width: 40px;
+    height: 40px;
+    border: 4px solid var(--gris-medio);
+    border-top: 4px solid var(--verde-uniagraria);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+    .estadistica-numero {
+        font-size: 1.8rem;
+    }
+    
+    .btn-uniagraria,
+    .btn-naranja {
+        padding: 8px 20px;
+        font-size: 0.9rem;
+    }
+    
+    .table-uniagraria {
+        font-size: 0.85rem;
+    }
+}
+
+/* ===== UTILITARIOS ===== */
+.text-verde-uniagraria {
+    color: var(--verde-uniagraria);
+}
+
+.text-naranja-uniagraria {
+    color: var(--naranja-uniagraria);
+}
+
+.bg-verde-uniagraria {
+    background: var(--verde-uniagraria);
+}
+
+.bg-verde-claro {
+    background: var(--verde-claro);
+}
+
+.bg-naranja-uniagraria {
+    background: var(--naranja-uniagraria);
+}
+
+.border-verde-uniagraria {
+    border-color: var(--verde-uniagraria);
+}
+
+/* ===== SCROLLBAR PERSONALIZADO ===== */
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--gris-claro);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--verde-claro);
+    border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--verde-uniagraria);
+}

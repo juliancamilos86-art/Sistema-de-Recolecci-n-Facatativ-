@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+
+{% block title %}UNIAGRARIA - Gestión de Ferias{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Encabezado -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="text-success">
+                <i class="fas fa-images me-2"></i>
+                Gestión de Ferias Educativas 2026
+            </h2>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Ferias</li>
+                </ol>
+            </nav>
+        </div>
+        <div>
+            <button class="btn btn-uniagraria" data-bs-toggle="modal" data-bs-target="#nuevaFeriaModal">
+                <i class="fas fa-plus-circle me-2"></i>
+                Nueva Feria
+            </button>
+        </div>
+    </div>
+
+    <!-- Grid de Ferias -->
+    <div class="row">
+        {% for feria in ferias %}
+        <div class="col-md-4 mb-4">
+            <div class="card card-uniagraria h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-calendar-alt me-2"></i>
+                        {{ feria.nombre }}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-2">
+                        <i class="fas fa-map-marker-alt text-success me-2"></i>
+                        {{ feria.ubicacion }}
+                    </p>
+                    <p class="mb-2">
+                        <i class="fas fa-calendar text-success me-2"></i>
+                        {% if feria.fecha_inicio %}
+                        {{ feria.fecha_inicio.strftime('%d/%m/%Y') }}
+                        {% if feria.fecha_fin %} - {{ feria.fecha_fin.strftime('%d/%m/%Y') }}{% endif %}
+                        {% else %}
+                        Fecha por definir
+                        {% endif %}
+                    </p>
+                    <p class="mb-2">
+                        <i class="fas fa-city text-success me-2"></i>
+                        {{ feria.municipio_rel.nombre if feria.municipio_rel else 'N/A' }}
+                    </p>
+                    <p class="mb-3">
+                        <span class="badge bg-info">
+                            <i class="fas fa-images me-1"></i>
+                            {{ feria.imagenes|length }} imágenes
+                        </span>
+                    </p>
+                    <p class="text-muted small">{{ feria.descripcion|truncate(100) }}</p>
+                </div>
+                <div class="card-footer bg-transparent">
+                    <button class="btn btn-sm btn-outline-success w-100" onclick="abrirGaleria({{ feria.id }}, '{{ feria.nombre }}')">
+                        <i class="fas fa-images me-2"></i>
+                        Ver Galería
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Modal Nueva Feria -->
+<div class="modal fade" id="nuevaFeriaModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-plus-circle me-2"></i>
+                    Nueva Feria
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formFeria">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Nombre de la Feria *</label>
+                        <input type="text" class="form-control" name="nombre" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Fecha de inicio</label>
+                            <input type="date" class="form-control" name="fecha_inicio">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Fecha de fin</label>
+                            <input type="date" class="form-control" name="fecha_fin">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Ubicación</label>
+                        <input type="text" class="form-control" name="ubicacion">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Municipio</label>
+                        <select class="form-select select2" name="municipio_id">
+                            <option value="">Seleccione un municipio</option>
+                            {% for m in municipios %}
+                            <option value="{{ m.id }}">{{ m.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Descripción</label>
+                        <textarea class="form-control" name="descripcion" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-uniagraria" onclick="guardarFeria()">
+                    <i class="fas fa-save me-2"></i>
+                    Crear Feria
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Galería de Imágenes -->
+<div class="modal fade" id="galeriaModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="galeriaTitulo">
+                    <i class="fas fa-images me-2"></i>
+                    Galería de Imágenes
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Dropzone para subir imágenes -->
+                <div class="dropzone" id="dropzoneImagenes"></div>
+                
+                <!-- Grid de imágenes -->
+                <div class="row mt-4" id="gridImagenes"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let feriaActual = null;
+
+// Configurar Dropzone
+Dropzone.autoDiscover = false;
+
+function abrirGaleria(feriaId, nombreFeria) {
+    feriaActual = feriaId;
+    document.getElementById('galeriaTitulo').innerHTML = `<i class="fas fa-images me-2"></i>Galería - ${nombreFeria}`;
+    
+    // Inicializar Dropzone
+    const dropzone = new Dropzone("#dropzoneImagenes", {
+        url: `/api/ferias/${feriaId}/imagenes`,
+        headers: {
+            'X-CSRFToken': csrftoken
+        },
+        paramName: 'images',
+        maxFilesize: 10,
+        acceptedFiles: 'image/*',
+        dictDefaultMessage: 'Arrastra las imágenes aquí o haz clic para subir',
+        dictFallbackMessage: "Tu navegador no soporta arrastrar archivos",
+        dictFileTooBig: "El archivo es demasiado grande ({{filesize}}MB). Máximo: {{maxFilesize}}MB.",
+        dictInvalidFileType: "No puedes subir archivos de este tipo",
+        dictCancelUpload: "Cancelar subida",
+        dictUploadCanceled: "Subida cancelada",
+        dictRemoveFile: "Eliminar archivo"
+    });
+    
+    dropzone.on("success", function(file, response) {
+        toastr.success(`Imagen subida correctamente`);
+        cargarImagenes(feriaId);
+    });
+    
+    dropzone.on("error", function(file, errorMessage) {
+        toastr.error(`Error al subir imagen: ${errorMessage}`);
+    });
+    
+    // Cargar imágenes existentes
+    cargarImagenes(feriaId);
+    
+    // Abrir modal
+    new bootstrap.Modal(document.getElementById('galeriaModal')).show();
+}
+
+function cargarImagenes(feriaId) {
+    fetch(`/api/ferias/${feriaId}/imagenes`)
+        .then(response => response.json())
+        .then(data => {
+            const grid = document.getElementById('gridImagenes');
+            grid.innerHTML = '';
+            
+            data.imagenes.forEach(imagen => {
+                const col = document.createElement('div');
+                col.className = 'col-md-4 mb-3';
+                col.innerHTML = `
+                    <div class="card">
+                        <img src="${imagen.url}" class="card-img-top" style="height: 200px; object-fit: cover;">
+                        <div class="card-body">
+                            <p class="small text-muted">
+                                <i class="fas fa-user me-1"></i>${imagen.usuario || 'N/A'}<br>
+                                <i class="fas fa-clock me-1"></i>${new Date(imagen.fecha).toLocaleDateString()}
+                            </p>
+                            <button class="btn btn-sm btn-danger" onclick="eliminarImagen('${imagen.public_id}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(col);
+            });
+        });
+}
+
+function guardarFeria() {
+    const formData = new FormData(document.getElementById('formFeria'));
+    const data = Object.fromEntries(formData.entries());
+    
+    fetch('/api/ferias', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            toastr.error(data.error);
+        } else {
+            toastr.success('Feria creada exitosamente');
+            setTimeout(() => location.reload(), 2000);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        toastr.error('Error al crear la feria');
+    });
+}
+</script>
+{% endblock %}

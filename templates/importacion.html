@@ -1,0 +1,318 @@
+{% extends "base.html" %}
+
+{% block title %}UNIAGRARIA - Importación de Datos{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Encabezado -->
+    <div class="d-flex justify-content-between align-items-center mb-4 animate-slide-in">
+        <div>
+            <h2 class="text-success">
+                <i class="fas fa-file-import me-2"></i>
+                Importación de Datos
+            </h2>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Importación</li>
+                </ol>
+            </nav>
+        </div>
+        <div>
+            <span class="badge bg-info p-3">
+                <i class="fas fa-database me-2"></i>
+                NeonTech PostgreSQL
+            </span>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Panel de Importación -->
+        <div class="col-md-5 mb-4">
+            <div class="card card-uniagraria animate-slide-in" style="animation-delay: 0.1s;">
+                <div class="card-header-uniagraria">
+                    <h5 class="mb-0">
+                        <i class="fas fa-upload me-2"></i>
+                        Subir Archivo Excel
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Formatos soportados: <strong>.xlsx, .xls, .csv</strong>
+                        <br>
+                        <small>Tamaño máximo: 500MB</small>
+                    </div>
+
+                    <div class="dropzone-uniagraria mb-3" id="dropzoneImportacion">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <h5>Arrastra tu archivo aquí</h5>
+                        <p class="text-muted">o haz clic para seleccionar</p>
+                    </div>
+
+                    <div id="previewContainer" style="display: none;">
+                        <hr>
+                        <h6 class="text-success">
+                            <i class="fas fa-file-excel me-2"></i>
+                            Archivo seleccionado:
+                        </h6>
+                        <div class="d-flex align-items-center p-3 bg-light rounded">
+                            <i class="fas fa-file-excel fa-2x text-success me-3"></i>
+                            <div class="flex-grow-1">
+                                <strong id="fileName"></strong>
+                                <br>
+                                <small id="fileSize" class="text-muted"></small>
+                            </div>
+                            <button class="btn btn-sm btn-danger" onclick="resetUpload()">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="progressContainer" style="display: none;" class="mt-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Procesando...</span>
+                            <span id="progressPercent">0%</span>
+                        </div>
+                        <div class="progress-uniagraria">
+                            <div id="progressBar" class="progress-bar-uniagraria" style="width: 0%;"></div>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-uniagraria w-100 mt-3" id="btnImportar" onclick="importarArchivo()" disabled>
+                        <i class="fas fa-play me-2"></i>
+                        Iniciar Importación
+                    </button>
+                </div>
+            </div>
+
+            <!-- Plantilla de ejemplo -->
+            <div class="card card-uniagraria mt-4 animate-slide-in" style="animation-delay: 0.2s;">
+                <div class="card-body">
+                    <h6 class="text-success">
+                        <i class="fas fa-download me-2"></i>
+                        Plantilla de ejemplo
+                    </h6>
+                    <p class="small text-muted">
+                        Descarga la plantilla para asegurar el formato correcto de los datos.
+                    </p>
+                    <div class="row">
+                        <div class="col-6">
+                            <a href="{{ url_for('static', filename='plantillas/plantilla_recoleccion.xlsx') }}" 
+                               class="btn btn-outline-uniagraria w-100">
+                                <i class="fas fa-file-excel me-2"></i>
+                                Excel
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="{{ url_for('static', filename='plantillas/plantilla_recoleccion.csv') }}" 
+                               class="btn btn-outline-uniagraria w-100">
+                                <i class="fas fa-file-csv me-2"></i>
+                                CSV
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Historial de Importaciones -->
+        <div class="col-md-7 mb-4">
+            <div class="card card-uniagraria animate-slide-in" style="animation-delay: 0.3s;">
+                <div class="card-header-uniagraria">
+                    <h5 class="mb-0">
+                        <i class="fas fa-history me-2"></i>
+                        Historial de Importaciones
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover datatable">
+                            <thead>
+                                <tr>
+                                    <th>Archivo</th>
+                                    <th>Registros</th>
+                                    <th>Usuario</th>
+                                    <th>Fecha</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for imp in importaciones %}
+                                <tr>
+                                    <td>
+                                        <i class="fas fa-file-excel text-success me-2"></i>
+                                        {{ imp.nombre_archivo|truncate(30) }}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-primary">
+                                            {{ imp.registros_procesados }}
+                                        </span>
+                                    </td>
+                                    <td>{{ imp.usuario_importo.nombre if imp.usuario_importo else 'N/A' }}</td>
+                                    <td>{{ imp.fecha_importacion.strftime('%d/%m/%Y %H:%M') }}</td>
+                                    <td>
+                                        {% if imp.estado == 'completado' %}
+                                        <span class="badge bg-success">Completado</span>
+                                        {% else %}
+                                        <span class="badge bg-warning text-dark">{{ imp.estado }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{{ imp.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-download"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="6" class="text-center py-4">
+                                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                                        <p class="text-muted">No hay importaciones registradas</p>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let archivoSeleccionado = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Inicializar Dropzone
+    const dropzone = document.getElementById('dropzoneImportacion');
+    
+    dropzone.addEventListener('click', function() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.xlsx,.xls,.csv';
+        input.onchange = function(e) {
+            archivoSeleccionado = e.target.files[0];
+            mostrarPreview(archivoSeleccionado);
+        };
+        input.click();
+    });
+    
+    dropzone.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        dropzone.style.background = 'rgba(76, 175, 80, 0.15)';
+        dropzone.style.borderColor = 'var(--verde-oscuro)';
+    });
+    
+    dropzone.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        dropzone.style.background = 'rgba(76, 175, 80, 0.05)';
+        dropzone.style.borderColor = 'var(--verde-claro)';
+    });
+    
+    dropzone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        dropzone.style.background = 'rgba(76, 175, 80, 0.05)';
+        dropzone.style.borderColor = 'var(--verde-claro)';
+        
+        archivoSeleccionado = e.dataTransfer.files[0];
+        mostrarPreview(archivoSeleccionado);
+    });
+    
+    // Inicializar DataTable
+    if ($('.datatable').length) {
+        $('.datatable').DataTable({
+            responsive: true,
+            language: {
+                url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
+            },
+            pageLength: 10,
+            order: [[3, 'desc']]
+        });
+    }
+});
+
+function mostrarPreview(archivo) {
+    if (!archivo) return;
+    
+    document.getElementById('fileName').textContent = archivo.name;
+    document.getElementById('fileSize').textContent = formatBytes(archivo.size);
+    document.getElementById('previewContainer').style.display = 'block';
+    document.getElementById('dropzoneImportacion').style.display = 'none';
+    document.getElementById('btnImportar').disabled = false;
+}
+
+function resetUpload() {
+    archivoSeleccionado = null;
+    document.getElementById('previewContainer').style.display = 'none';
+    document.getElementById('dropzoneImportacion').style.display = 'block';
+    document.getElementById('btnImportar').disabled = true;
+    document.getElementById('progressContainer').style.display = 'none';
+    document.getElementById('progressBar').style.width = '0%';
+    document.getElementById('progressPercent').textContent = '0%';
+}
+
+function formatBytes(bytes, decimals = 2) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
+
+function importarArchivo() {
+    if (!archivoSeleccionado) {
+        toastr.error('Por favor seleccione un archivo');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('file', archivoSeleccionado);
+    
+    document.getElementById('progressContainer').style.display = 'block';
+    document.getElementById('btnImportar').disabled = true;
+    
+    fetch('/api/importacion/excel', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrftoken
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            toastr.error(data.error);
+            document.getElementById('btnImportar').disabled = false;
+            document.getElementById('progressContainer').style.display = 'none';
+        } else {
+            toastr.success(data.message);
+            
+            // Simular progreso
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += 2;
+                document.getElementById('progressBar').style.width = progress + '%';
+                document.getElementById('progressPercent').textContent = progress + '%';
+                
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1000);
+                }
+            }, 50);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        toastr.error('Error al importar el archivo');
+        document.getElementById('btnImportar').disabled = false;
+        document.getElementById('progressContainer').style.display = 'none';
+    });
+}
+</script>
+{% endblock %}

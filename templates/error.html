@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UNIAGRARIA - Error {{ error_code }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .error-card {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            padding: 50px;
+            text-align: center;
+            max-width: 600px;
+            animation: fadeIn 0.5s ease-out;
+        }
+        .error-icon {
+            width: 120px;
+            height: 120px;
+            background: linear-gradient(135deg, #2E7D32, #1B5E20);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 30px;
+            color: white;
+            font-size: 60px;
+        }
+        .error-code {
+            font-size: 72px;
+            font-weight: 700;
+            color: #2E7D32;
+            line-height: 1;
+            margin-bottom: 10px;
+        }
+        .error-message {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .error-description {
+            color: #6c757d;
+            margin-bottom: 30px;
+        }
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="error-card">
+        <div class="error-icon">
+            {% if error_code == 404 %}
+            <i class="bi bi-question-circle"></i>
+            {% elif error_code == 500 %}
+            <i class="bi bi-exclamation-triangle"></i>
+            {% elif error_code == 403 %}
+            <i class="bi bi-shield-lock"></i>
+            {% elif error_code == 429 %}
+            <i class="bi bi-hourglass-split"></i>
+            {% else %}
+            <i class="bi bi-bug"></i>
+            {% endif %}
+        </div>
+        <div class="error-code">{{ error_code }}</div>
+        <div class="error-message">{{ error_message }}</div>
+        <div class="error-description">
+            {% if error_code == 404 %}
+            La página que estás buscando no existe o ha sido movida.
+            {% elif error_code == 500 %}
+            Ha ocurrido un error interno en el servidor. Nuestro equipo ha sido notificado.
+            {% elif error_code == 403 %}
+            No tienes permisos para acceder a esta página.
+            {% elif error_code == 429 %}
+            Has realizado demasiadas solicitudes. Por favor espera un momento.
+            {% else %}
+            Ha ocurrido un error inesperado.
+            {% endif %}
+        </div>
+        <div class="mt-4">
+            <a href="{{ url_for('dashboard') }}" class="btn btn-uniagraria" style="background: #2E7D32; color: white; border: none; padding: 12px 30px; border-radius: 25px; font-weight: 600; text-decoration: none;">
+                <i class="bi bi-house-door me-2"></i>
+                Volver al Dashboard
+            </a>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,320 @@
+{% extends "base.html" %}
+
+{% block title %}UNIAGRARIA - Dashboard 2026{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Encabezado -->
+    <div class="d-flex justify-content-between align-items-center mb-4 animate-slide-in">
+        <div>
+            <h2 class="text-success">
+                <i class="fas fa-chart-line me-2"></i>
+                Dashboard Facatativá 2026-1
+            </h2>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item active" aria-current="page">
+                        <i class="fas fa-home me-1"></i>Inicio
+                    </li>
+                </ol>
+            </nav>
+        </div>
+        <div>
+            <span class="badge bg-success p-3">
+                <i class="fas fa-calendar-alt me-2"></i>
+                {{ now().strftime('%d/%m/%Y') if now else datetime.now().strftime('%d/%m/%Y') }}
+            </span>
+        </div>
+    </div>
+
+    <!-- Tarjetas de Estadísticas -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4 animate-slide-in" style="animation-delay: 0.1s;">
+            <div class="estadistica-card">
+                <div class="d-flex align-items-center">
+                    <div class="dashboard-icon me-3">
+                        <i class="fas fa-clipboard-list"></i>
+                    </div>
+                    <div>
+                        <div class="estadistica-numero">{{ total_registros }}</div>
+                        <div class="estadistica-titulo">Total Registros</div>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <div class="progress-uniagraria">
+                        <div class="progress-bar-uniagraria" style="width: 100%;"></div>
+                    </div>
+                    <small class="text-muted">Período 2026-1</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4 animate-slide-in" style="animation-delay: 0.2s;">
+            <div class="estadistica-card">
+                <div class="d-flex align-items-center">
+                    <div class="dashboard-icon me-3" style="background: linear-gradient(135deg, #FF8F00, #FF6F00);">
+                        <i class="fas fa-city"></i>
+                    </div>
+                    <div>
+                        <div class="estadistica-numero">{{ total_municipios }}</div>
+                        <div class="estadistica-titulo">Municipios</div>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <small class="text-muted">Cundinamarca</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4 animate-slide-in" style="animation-delay: 0.3s;">
+            <div class="estadistica-card">
+                <div class="d-flex align-items-center">
+                    <div class="dashboard-icon me-3" style="background: linear-gradient(135deg, #26A69A, #00897B);">
+                        <i class="fas fa-school"></i>
+                    </div>
+                    <div>
+                        <div class="estadistica-numero">{{ total_instituciones }}</div>
+                        <div class="estadistica-titulo">Instituciones</div>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <small class="text-muted">Educativas</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4 animate-slide-in" style="animation-delay: 0.4s;">
+            <div class="estadistica-card">
+                <div class="d-flex align-items-center">
+                    <div class="dashboard-icon me-3" style="background: linear-gradient(135deg, #5C6BC0, #3949AB);">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div>
+                        <div class="estadistica-numero">{{ completados }}</div>
+                        <div class="estadistica-titulo">Completados</div>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <div class="progress-uniagraria">
+                        <div class="progress-bar-uniagraria" 
+                             style="width: {% if total_registros > 0 %}{{ (completados / total_registros * 100)|int }}{% else %}0{% endif %}%;">
+                        </div>
+                    </div>
+                    <small class="text-muted">
+                        {% if total_registros > 0 %}
+                            {{ (completados / total_registros * 100)|int }}% completado
+                        {% else %}
+                            0% completado
+                        {% endif %}
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gráficos y Tablas -->
+    <div class="row mb-4">
+        <!-- Gráfico de Municipios -->
+        <div class="col-lg-8 mb-4 animate-slide-in" style="animation-delay: 0.5s;">
+            <div class="dashboard-card">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="text-success mb-0">
+                        <i class="fas fa-chart-bar me-2"></i>
+                        Registros por Municipio
+                    </h5>
+                    <span class="badge-uniagraria">2026-1</span>
+                </div>
+                <div style="height: 350px;">
+                    {% if grafico_municipios %}
+                        <div id="graficoMunicipios"></div>
+                        <script>
+                            var graphJSON = {{ grafico_municipios | safe }};
+                            Plotly.newPlot('graficoMunicipios', graphJSON.data, graphJSON.layout, {
+                                responsive: true,
+                                displaylogo: false
+                            });
+                        </script>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-chart-bar fa-4x text-muted mb-3"></i>
+                            <p class="text-muted">No hay datos disponibles para mostrar</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Estado de Registros -->
+        <div class="col-lg-4 mb-4 animate-slide-in" style="animation-delay: 0.6s;">
+            <div class="dashboard-card">
+                <h5 class="text-success mb-3">
+                    <i class="fas fa-tasks me-2"></i>
+                    Estado de Registros
+                </h5>
+                <div class="d-flex justify-content-center mb-3">
+                    <div style="width: 200px; height: 200px;">
+                        <canvas id="graficoEstado"></canvas>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-6">
+                        <div class="d-flex align-items-center">
+                            <span class="badge bg-success me-2" style="width: 12px; height: 12px; padding: 0;"></span>
+                            <span>Completados</span>
+                            <span class="ms-auto fw-bold">{{ completados }}</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="d-flex align-items-center">
+                            <span class="badge bg-warning me-2" style="width: 12px; height: 12px; padding: 0;"></span>
+                            <span>Pendientes</span>
+                            <span class="ms-auto fw-bold">{{ pendientes }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Últimos Registros -->
+    <div class="row mb-4 animate-slide-in" style="animation-delay: 0.7s;">
+        <div class="col-12">
+            <div class="dashboard-card">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="text-success mb-0">
+                        <i class="fas fa-history me-2"></i>
+                        Últimos Registros
+                    </h5>
+                    <a href="{{ url_for('recoleccion') }}" class="btn btn-sm btn-outline-uniagraria">
+                        Ver todos <i class="fas fa-arrow-right ms-2"></i>
+                    </a>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>ID</th>
+                                <th>Estudiante</th>
+                                <th>Municipio</th>
+                                <th>Institución</th>
+                                <th>Grado</th>
+                                <th>Estado</th>
+                                <th>Fecha</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for r in registros_recientes %}
+                            <tr>
+                                <td>#{{ r.id }}</td>
+                                <td>
+                                    <strong>{{ r.realizador_nombre }} {{ r.realizador_apellidos or '' }}</strong>
+                                </td>
+                                <td>{{ r.municipio.nombre if r.municipio else 'N/A' }}</td>
+                                <td>{{ r.institucion.nombre if r.institucion else 'N/A' }}</td>
+                                <td>{{ r.grado or 'N/A' }}</td>
+                                <td>
+                                    {% if r.estado == 'completado' %}
+                                    <span class="badge bg-success">Completado</span>
+                                    {% elif r.estado == 'pendiente' %}
+                                    <span class="badge bg-warning text-dark">Pendiente</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">{{ r.estado }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ r.fecha_registro.strftime('%d/%m/%Y') }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="7" class="text-center py-4">
+                                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                                    <p class="text-muted">No hay registros recientes</p>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Acciones Rápidas -->
+    <div class="row animate-slide-in" style="animation-delay: 0.8s;">
+        <div class="col-12">
+            <div class="dashboard-card">
+                <h5 class="text-success mb-3">
+                    <i class="fas fa-bolt me-2"></i>
+                    Acciones Rápidas
+                </h5>
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('recoleccion') }}" class="btn btn-outline-uniagraria w-100 py-3">
+                            <i class="fas fa-plus-circle fa-2x mb-2"></i>
+                            <br>
+                            Nuevo Registro
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('importacion') }}" class="btn btn-outline-uniagraria w-100 py-3">
+                            <i class="fas fa-file-import fa-2x mb-2"></i>
+                            <br>
+                            Importar Datos
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('reportes') }}" class="btn btn-outline-uniagraria w-100 py-3">
+                            <i class="fas fa-file-pdf fa-2x mb-2"></i>
+                            <br>
+                            Generar Reporte
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('ferias') }}" class="btn btn-outline-uniagraria w-100 py-3">
+                            <i class="fas fa-images fa-2x mb-2"></i>
+                            <br>
+                            Subir Fotos
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Gráfico de estado (donut chart)
+    var ctx = document.getElementById('graficoEstado').getContext('2d');
+    var chart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Completados', 'Pendientes'],
+            datasets: [{
+                data: [{{ completados }}, {{ pendientes }}],
+                backgroundColor: ['#28a745', '#ffc107'],
+                borderColor: ['#28a745', '#ffc107'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            cutout: '70%',
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    enabled: true
+                }
+            }
+        }
+    });
+});
+
+// Función para actualizar dashboard en tiempo real (cada 60 segundos)
+setInterval(function() {
+    location.reload();
+}, 60000);
+</script>
+{% endblock %}

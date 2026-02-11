@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}UNIAGRARIA - Sistema Facatativá 2026{% endblock %}</title>
+    
+    <!-- Bootstrap 5 - Verde Uniagraria -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    
+    <!-- Font Awesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- DataTables -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css">
+    
+    <!-- Select2 -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css">
+    
+    <!-- Toastr -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
+    
+    <!-- SweetAlert2 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    
+    <!-- Dropzone -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/dropzone/5.9.3/min/dropzone.min.css">
+    
+    <!-- Chart.js -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.css">
+    
+    <!-- Estilos personalizados -->
+    <style>
+        :root {
+            --verde-uniagraria: #2E7D32;
+            --verde-claro: #4CAF50;
+            --verde-oscuro: #1B5E20;
+            --naranja-uniagraria: #FF8F00;
+            --gris-claro: #f8f9fa;
+            --sombra: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--gris-claro);
+        }
+        
+        .navbar-uniagraria {
+            background: linear-gradient(135deg, var(--verde-uniagraria) 0%, var(--verde-oscuro) 100%);
+            box-shadow: var(--sombra);
+        }
+        
+        .navbar-brand {
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+        
+        .sidebar {
+            min-height: calc(100vh - 56px);
+            background: white;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.05);
+        }
+        
+        .sidebar .nav-link {
+            color: #333;
+            padding: 12px 20px;
+            margin: 4px 8px;
+            border-radius: 10px;
+            transition: all 0.3s;
+        }
+        
+        .sidebar .nav-link:hover {
+            background: var(--verde-claro);
+            color: white;
+            transform: translateX(5px);
+        }
+        
+        .sidebar .nav-link.active {
+            background: var(--verde-uniagraria);
+            color: white;
+        }
+        
+        .sidebar .nav-link i {
+            margin-right: 10px;
+            width: 20px;
+            text-align: center;
+        }
+        
+        .card-uniagraria {
+            border: none;
+            border-radius: 15px;
+            box-shadow: var(--sombra);
+            transition: transform 0.3s;
+        }
+        
+        .card-uniagraria:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+        }
+        
+        .btn-uniagraria {
+            background: var(--verde-uniagraria);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .btn-uniagraria:hover {
+            background: var(--verde-oscuro);
+            color: white;
+            transform: scale(1.05);
+        }
+        
+        .btn-naranja {
+            background: var(--naranja-uniagraria);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: 600;
+        }
+        
+        .badge-uniagraria {
+            background: var(--verde-claro);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+        
+        .estadistica-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            border-left: 5px solid var(--verde-uniagraria);
+        }
+        
+        .avatar-circle {
+            width: 40px;
+            height: 40px;
+            background: var(--naranja-uniagraria);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .footer-uniagraria {
+            background: white;
+            padding: 20px;
+            margin-top: 30px;
+            border-radius: 15px 15px 0 0;
+            box-shadow: 0 -2px 5px rgba(0,0,0,0.05);
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+    </style>
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-uniagraria sticky-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{{ url_for('dashboard') }}">
+                <i class="fas fa-leaf me-2"></i>
+                UNIAGRARIA | Facatativá 2026
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    {% if current_user.is_authenticated %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <div class="d-inline-block avatar-circle me-2">
+                                {{ current_user.nombre[:1] }}
+                            </div>
+                            {{ current_user.nombre }}
+                            {% if current_user.is_admin() %}
+                            <span class="badge bg-warning text-dark ms-2">Admin</span>
+                            {% endif %}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li>
+                                <a class="dropdown-item" href="#">
+                                    <i class="fas fa-user-circle me-2"></i>Mi Perfil
+                                </a>
+                            </li>
+                            {% if current_user.is_admin() %}
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('admin_usuarios') }}">
+                                    <i class="fas fa-users-cog me-2"></i>Administrar Usuarios
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            {% endif %}
+                            <li>
+                                <a class="dropdown-item text-danger" href="{{ url_for('logout') }}">
+                                    <i class="fas fa-sign-out-alt me-2"></i>Cerrar Sesión
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-md-2 p-0 sidebar">
+                <div class="nav flex-column nav-pills mt-3">
+                    <a class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}" 
+                       href="{{ url_for('dashboard') }}">
+                        <i class="fas fa-chart-line"></i>
+                        Dashboard
+                    </a>
+                    <a class="nav-link {% if request.endpoint == 'recoleccion' %}active{% endif %}" 
+                       href="{{ url_for('recoleccion') }}">
+                        <i class="fas fa-clipboard-list"></i>
+                        Recolección
+                    </a>
+                    <a class="nav-link {% if request.endpoint == 'importacion' %}active{% endif %}" 
+                       href="{{ url_for('importacion') }}">
+                        <i class="fas fa-file-import"></i>
+                        Importación
+                    </a>
+                    <a class="nav-link {% if request.endpoint == 'reportes' %}active{% endif %}" 
+                       href="{{ url_for('reportes') }}">
+                        <i class="fas fa-chart-bar"></i>
+                        Reportes
+                    </a>
+                    <a class="nav-link {% if request.endpoint == 'ferias' %}active{% endif %}" 
+                       href="{{ url_for('ferias') }}">
+                        <i class="fas fa-images"></i>
+                        Ferias
+                    </a>
+                    <a class="nav-link {% if request.endpoint == 'archivos' %}active{% endif %}" 
+                       href="{{ url_for('archivos') }}">
+                        <i class="fas fa-folder"></i>
+                        Archivos
+                    </a>
+                    <hr class="my-3">
+                    <div class="text-center text-muted small">
+                        <i class="fas fa-calendar-alt me-1"></i>
+                        Periodo 2026-1
+                    </div>
+                    <div class="text-center mt-2">
+                        <span class="badge bg-success">Sistema Profesional</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Main Content -->
+            <div class="col-md-10 p-4 fade-in">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <script>
+                                toastr["{{ 'success' if category == 'success' else 'error' }}"]("{{ message }}");
+                            </script>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+                
+                {% block content %}{% endblock %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Footer -->
+    <footer class="footer-uniagraria">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-md-6 text-muted">
+                    <i class="fas fa-leaf me-2"></i>
+                    UNIAGRARIA - Sistema de Recolección Facatativá 2026
+                    <br>
+                    <small>Desarrollado para optimizar procesos institucionales</small>
+                </div>
+                <div class="col-md-6 text-end">
+                    <span class="badge bg-light text-dark p-2">
+                        <i class="fas fa-cloud me-1"></i>Cloudinary
+                    </span>
+                    <span class="badge bg-light text-dark p-2 ms-2">
+                        <i class="fas fa-database me-1"></i>NeonTech
+                    </span>
+                    <span class="badge bg-light text-dark p-2 ms-2">
+                        <i class="fab fa-microsoft me-1"></i>Azure AD
+                    </span>
+                    <div class="mt-2">
+                        <small>© 2026 - Todos los derechos reservados</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dropzone/5.9.3/min/dropzone.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    
+    <script>
+        // Configuración global de Toastr
+        toastr.options = {
+            closeButton: true,
+            progressBar: true,
+            positionClass: "toast-top-right",
+            timeOut: 5000,
+            extendedTimeOut: 2000
+        };
+        
+        // Inicializar Select2
+        $(document).ready(function() {
+            $('.select2').select2({
+                theme: 'bootstrap-5',
+                width: '100%'
+            });
+        });
+        
+        // CSRF Protection
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        
+        const csrftoken = getCookie('session');
+        
+        // Configuración global para fetch
+        window.fetchWithCSRF = function(url, options = {}) {
+            options.headers = options.headers || {};
+            options.headers['X-CSRFToken'] = csrftoken;
+            options.credentials = 'include';
+            return fetch(url, options);
+        };
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

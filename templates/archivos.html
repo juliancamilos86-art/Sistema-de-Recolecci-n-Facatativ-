@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block title %}UNIAGRARIA - Archivos y Backup{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Encabezado -->
+    <div class="d-flex justify-content-between align-items-center mb-4 animate-slide-in">
+        <div>
+            <h2 class="text-success">
+                <i class="fas fa-folder me-2"></i>
+                Archivos y Backup
+            </h2>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Archivos</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Backup Completo -->
+        <div class="col-md-6 mb-4">
+            <div class="card card-uniagraria h-100 animate-slide-in" style="animation-delay: 0.1s;">
+                <div class="card-header-uniagraria">
+                    <h5 class="mb-0">
+                        <i class="fas fa-database me-2"></i>
+                        Backup Completo
+                    </h5>
+                </div>
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-file-archive fa-5x text-success mb-4"></i>
+                    <h4>Exportar Todo el Sistema</h4>
+                    <p class="text-muted">
+                        Este archivo incluye:
+                    </p>
+                    <ul class="list-unstyled">
+                        <li><i class="fas fa-check-circle text-success me-2"></i> Datos de recolección 2026-1</li>
+                        <li><i class="fas fa-check-circle text-success me-2"></i> Información de ferias</li>
+                        <li><i class="fas fa-check-circle text-success me-2"></i> URLs de imágenes en Cloudinary</li>
+                        <li><i class="fas fa-check-circle text-success me-2"></i> Reportes en Excel y PDF</li>
+                    </ul>
+                    <button class="btn btn-uniagraria btn-lg mt-4" onclick="exportarBackupCompleto()">
+                        <i class="fas fa-download me-2"></i>
+                        Descargar ZIP Completo
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Importaciones Recientes -->
+        <div class="col-md-6 mb-4">
+            <div class="card card-uniagraria h-100 animate-slide-in" style="animation-delay: 0.2s;">
+                <div class="card-header-uniagraria">
+                    <h5 class="mb-0">
+                        <i class="fas fa-history me-2"></i>
+                        Importaciones Recientes
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        {% for imp in importaciones %}
+                        <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="fas fa-file-excel text-success me-2"></i>
+                                <strong>{{ imp.nombre_archivo }}</strong>
+                                <br>
+                                <small class="text-muted">
+                                    {{ imp.fecha_importacion.strftime('%d/%m/%Y %H:%M') }} - 
+                                    {{ imp.usuario_importo.nombre if imp.usuario_importo else 'N/A' }}
+                                </small>
+                            </div>
+                            <div>
+                                <span class="badge bg-primary me-2">{{ imp.registros_procesados }} registros</span>
+                                <a href="{{ imp.url }}" target="_blank" class="btn btn-sm btn-outline-success">
+                                    <i class="fas fa-download"></i>
+                                </a>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">No hay importaciones recientes</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Guía de Cloudinary -->
+    <div class="row mt-2">
+        <div class="col-12">
+            <div class="card card-uniagraria animate-slide-in" style="animation-delay: 0.3s;">
+                <div class="card-header-uniagraria">
+                    <h5 class="mb-0">
+                        <i class="fas fa-cloud me-2"></i>
+                        Almacenamiento en Cloudinary
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <p>
+                                <i class="fas fa-check-circle text-success me-2"></i>
+                                Las imágenes de ferias se almacenan automáticamente en Cloudinary
+                            </p>
+                            <p>
+                                <i class="fas fa-check-circle text-success me-2"></i>
+                                Los archivos importados tienen respaldo en la nube
+                            </p>
+                            <p>
+                                <i class="fas fa-check-circle text-success me-2"></i>
+                                El backup completo genera un ZIP con todos los datos
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <img src="https://res.cloudinary.com/cloudinary/image/upload/v1/logo/for_white_bg/cloudinary_logo_for_white_bg.svg" 
+                                 alt="Cloudinary" style="height: 40px;">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function exportarBackupCompleto() {
+    Swal.fire({
+        title: 'Preparando Backup',
+        text: 'Esto puede tomar unos segundos...',
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+    
+    fetch('/api/archivos/comprimir-todo', {
+        headers: {
+            'X-CSRFToken': csrftoken
+        }
+    })
+    .then(response => {
+        if (response.ok) {
+            return response.blob();
+        }
+        throw new Error('Error al generar el backup');
+    })
+    .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `uniagraria_backup_${new Date().getTime()}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        Swal.fire({
+            icon: 'success',
+            title: 'Backup Completado',
+            text: 'El archivo ZIP se ha descargado exitosamente',
+            timer: 3000,
+            showConfirmButton: false
+        });
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'No se pudo generar el backup'
+        });
+    });
+}
+</script>
+{% endblock %}
