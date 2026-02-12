@@ -1,35 +1,24 @@
 services:
   - type: web
-    name: uniagraria-recoleccion-facatativa-2026
+    name: sistema-recoleccion-facatativa
     runtime: python
-    repo: https://github.com/tu-usuario/uniagraria-nuevo
-    plan: professional
+    repo: https://github.com/juliancamilos86-art/Sistema-de-Recolecci-n-Facatativ-
+    plan: free
     region: oregon
     branch: main
-    buildCommand: |
-      pip install -r requirements.txt
-      python init_db_postgres.py
-    startCommand: gunicorn app:app --workers 4 --threads 2 --timeout 120 --worker-class gthread --bind 0.0.0.0:$PORT
-    healthCheckPath: /dashboard
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
     envVars:
       - key: DATABASE_URL
-        fromDatabase:
-          name: uniagraria-postgres
-          property: connectionString
-      - key: SESSION_SECRET
-        generateValue: true
-      - key: PYTHON_VERSION
-        value: 3.11.0
-      - key: FLASK_ENV
-        value: production
-      - key: FLASK_APP
-        value: app.py
+        sync: false
       - key: CLOUDINARY_CLOUD_NAME
         sync: false
       - key: CLOUDINARY_API_KEY
         sync: false
       - key: CLOUDINARY_API_SECRET
         sync: false
+      - key: SECRET_KEY
+        generateValue: true
       - key: AZURE_CLIENT_ID
         sync: false
       - key: AZURE_CLIENT_SECRET
@@ -37,14 +26,4 @@ services:
       - key: AZURE_TENANT_ID
         sync: false
       - key: AZURE_REDIRECT_URI
-        sync: false
-
-databases:
-  - name: uniagraria-postgres
-    plan: professional
-    region: oregon
-    databaseName: uniagraria_2026
-    user: uniagraria_admin
-    ipAllowList:
-      - source: 0.0.0.0/0
-        description: everywhere
+        value: https://sistema-de-recolecci-n-facatativ.onrender.com/callback
