@@ -56,20 +56,20 @@ from cloudinary.uploader import upload
 from cloudinary.utils import cloudinary_url
 
 # Procesamiento de datos
-import pandas as pd
-import numpy as np
+#mport pandas as pd
+#mport numpy as np
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils.dataframe import dataframe_to_rows
 from PIL import Image
-import plotly
-import plotly.express as px
-import plotly.graph_objects as go
-import plotly.utils
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-import seaborn as sns
+#mport plotly
+#mport plotly.express as px
+#mport plotly.graph_objects as go
+#mport plotly.utils
+#mport matplotlib
+#atplotlib.use('Agg')
+#mport matplotlib.pyplot as plt
+#mport seaborn as sns
 
 # PDF y Reportes
 from reportlab.lib import colors
@@ -385,61 +385,50 @@ def validate_email_format(email):
         return None
 
 def generar_excel_recoleccion(filtros=None):
-    """Genera archivo Excel con datos de recolección - ESTILO PROFESIONAL"""
-    query = RecoleccionDato.query
+    """Genera archivo Excel con datos de recolección - SIN PANDAS"""
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment
     
+    query = RecoleccionDato.query
     if filtros:
         if filtros.get('municipio_id'):
             query = query.filter_by(municipio_id=filtros['municipio_id'])
         if filtros.get('ano_periodo'):
             query = query.filter_by(ano_periodo=filtros['ano_periodo'])
-        if filtros.get('estado'):
-            query = query.filter_by(estado=filtros['estado'])
-        if filtros.get('fecha_inicio') and filtros.get('fecha_fin'):
-            query = query.filter(
-                RecoleccionDato.fecha_registro.between(
-                    filtros['fecha_inicio'], filtros['fecha_fin']
-                )
-            )
     
     datos = query.order_by(RecoleccionDato.fecha_registro.desc()).all()
     
-    # Crear DataFrame
-    df = pd.DataFrame([d.to_dict() for d in datos])
-    
-    # Crear Excel con formato profesional
     output = BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, sheet_name='Recolección 2026-1', index=False)
-        
-        # Dar formato al Excel
-        workbook = writer.book
-        worksheet = writer.sheets['Recolección 2026-1']
-        
-        # Estilos
-        header_font = Font(bold=True, color="FFFFFF")
-        header_fill = PatternFill(start_color="2E7D32", end_color="2E7D32", fill_type="solid")
-        header_alignment = Alignment(horizontal="center", vertical="center")
-        
-        # Aplicar estilo a los encabezados
-        for cell in worksheet[1]:
-            cell.font = header_font
-            cell.fill = header_fill
-            cell.alignment = header_alignment
-        
-        # Ajustar ancho de columnas
-        for column in worksheet.columns:
-            max_length = 0
-            column_letter = column[0].column_letter
-            for cell in column:
-                try:
-                    if len(str(cell.value)) > max_length:
-                        max_length = len(str(cell.value))
-                except:
-                    pass
-            adjusted_width = min(max_length + 2, 50)
-            worksheet.column_dimensions[column_letter].width = adjusted_width
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Recolección 2026-1"
     
+    # Encabezados
+    headers = ['ID', 'Ficha', 'Asesor', 'Municipio', 'Institución', 'Nombre', 
+               'Apellidos', 'Documento', 'Teléfono', 'Email', 'Grado', 'Programa', 'Estado']
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=header)
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill(start_color="2E7D32", end_color="2E7D32", fill_type="solid")
+        cell.alignment = Alignment(horizontal="center")
+    
+    # Datos
+    for row, d in enumerate(datos, 2):
+        ws.cell(row=row, column=1, value=d.id)
+        ws.cell(row=row, column=2, value=d.ficha_toma_registro)
+        ws.cell(row=row, column=3, value=d.asesor)
+        ws.cell(row=row, column=4, value=d.municipio.nombre if d.municipio else '')
+        ws.cell(row=row, column=5, value=d.institucion.nombre if d.institucion else '')
+        ws.cell(row=row, column=6, value=d.realizador_nombre)
+        ws.cell(row=row, column=7, value=d.realizador_apellidos)
+        ws.cell(row=row, column=8, value=d.matricula_documento)
+        ws.cell(row=row, column=9, value=d.telefono)
+        ws.cell(row=row, column=10, value=d.correo)
+        ws.cell(row=row, column=11, value=d.grado)
+        ws.cell(row=row, column=12, value=d.programa_interes)
+        ws.cell(row=row, column=13, value=d.estado)
+    
+    wb.save(output)
     output.seek(0)
     return output
 
