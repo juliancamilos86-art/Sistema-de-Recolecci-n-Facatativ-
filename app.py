@@ -58,6 +58,10 @@ from cloudinary.utils import cloudinary_url
 # Procesamiento de datos - SIN PANDAS NI NUMPY
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+<<<<<<< HEAD
+=======
+
+>>>>>>> 7bd5c01971cd39864a1e3a08956d12dd862f1613
 from PIL import Image
 
 # PDF y Reportes
@@ -81,7 +85,7 @@ load_dotenv()
 
 # ============================================================================
 # CONFIGURACIÓN INICIAL DE LA APLICACIÓN
-# ============================================================================
+# ===========================================================================
 
 app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
