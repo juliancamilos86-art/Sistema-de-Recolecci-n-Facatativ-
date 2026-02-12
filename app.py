@@ -55,21 +55,10 @@ import cloudinary.api
 from cloudinary.uploader import upload
 from cloudinary.utils import cloudinary_url
 
-# Procesamiento de datos
-#mport pandas as pd
-#mport numpy as np
+# Procesamiento de datos - SIN PANDAS NI NUMPY
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-from openpyxl.utils.dataframe import dataframe_to_rows
 from PIL import Image
-#mport plotly
-#mport plotly.express as px
-#mport plotly.graph_objects as go
-#mport plotly.utils
-#mport matplotlib
-#atplotlib.use('Agg')
-#mport matplotlib.pyplot as plt
-#mport seaborn as sns
 
 # PDF y Reportes
 from reportlab.lib import colors
@@ -85,7 +74,6 @@ import re
 import uuid
 from email_validator import validate_email, EmailNotValidError
 from werkzeug.utils import secure_filename
-import pytz
 
 # Configuración de variables de entorno
 from dotenv import load_dotenv
@@ -360,7 +348,6 @@ class ArchivoImportado(db.Model):
     fecha_importacion = db.Column(db.DateTime, default=datetime.utcnow)
     registros_procesados = db.Column(db.Integer, default=0)
     estado = db.Column(db.String(50), default='completado')
-    # metadata renombrado a datos_metadata para evitar palabra reservada
     datos_metadata = db.Column(db.JSON, default={})
 
 # ============================================================================
@@ -395,6 +382,14 @@ def generar_excel_recoleccion(filtros=None):
             query = query.filter_by(municipio_id=filtros['municipio_id'])
         if filtros.get('ano_periodo'):
             query = query.filter_by(ano_periodo=filtros['ano_periodo'])
+        if filtros.get('estado'):
+            query = query.filter_by(estado=filtros['estado'])
+        if filtros.get('fecha_inicio') and filtros.get('fecha_fin'):
+            query = query.filter(
+                RecoleccionDato.fecha_registro.between(
+                    filtros['fecha_inicio'], filtros['fecha_fin']
+                )
+            )
     
     datos = query.order_by(RecoleccionDato.fecha_registro.desc()).all()
     
@@ -405,7 +400,8 @@ def generar_excel_recoleccion(filtros=None):
     
     # Encabezados
     headers = ['ID', 'Ficha', 'Asesor', 'Municipio', 'Institución', 'Nombre', 
-               'Apellidos', 'Documento', 'Teléfono', 'Email', 'Grado', 'Programa', 'Estado']
+               'Apellidos', 'Documento', 'Teléfono', 'Email', 'Grado', 'Programa', 
+               'Jornada', 'Estado', 'Periodo', 'Observación', 'Fecha Registro']
     for col, header in enumerate(headers, 1):
         cell = ws.cell(row=1, column=col, value=header)
         cell.font = Font(bold=True, color="FFFFFF")
@@ -426,7 +422,24 @@ def generar_excel_recoleccion(filtros=None):
         ws.cell(row=row, column=10, value=d.correo)
         ws.cell(row=row, column=11, value=d.grado)
         ws.cell(row=row, column=12, value=d.programa_interes)
-        ws.cell(row=row, column=13, value=d.estado)
+        ws.cell(row=row, column=13, value=d.jornada_interes)
+        ws.cell(row=row, column=14, value=d.estado)
+        ws.cell(row=row, column=15, value=d.ano_periodo)
+        ws.cell(row=row, column=16, value=d.observacion)
+        ws.cell(row=row, column=17, value=d.fecha_registro.strftime('%Y-%m-%d %H:%M') if d.fecha_registro else '')
+    
+    # Ajustar ancho de columnas
+    for column in ws.columns:
+        max_length = 0
+        column_letter = column[0].column_letter
+        for cell in column:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        adjusted_width = min(max_length + 2, 50)
+        ws.column_dimensions[column_letter].width = adjusted_width
     
     wb.save(output)
     output.seek(0)
@@ -456,7 +469,6 @@ def login():
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
     
-    # Generar estado aleatorio para CSRF
     session['oauth_state'] = secrets.token_urlsafe(32)
     
     params = {
@@ -476,12 +488,10 @@ def login():
 def callback():
     """Callback de Azure AD"""
     try:
-        # Verificar estado
         if request.form.get('state') != session.get('oauth_state'):
             flash('Error de autenticación: estado inválido', 'error')
             return redirect(url_for('login'))
         
-        # Obtener token
         tenant_id = os.environ.get('AZURE_TENANT_ID')
         client_id = os.environ.get('AZURE_CLIENT_ID')
         client_secret = os.environ.get('AZURE_CLIENT_SECRET')
@@ -499,13 +509,6 @@ def callback():
         token_response = requests.post(token_url, data=token_data)
         token_json = token_response.json()
         
-        # Decodificar ID token
-        id_token = token_json.get('id_token')
-        if not id_token:
-            flash('Error: No se recibió token de identidad', 'error')
-            return redirect(url_for('login'))
-        
-        # Obtener información del usuario de Microsoft Graph
         access_token = token_json.get('access_token')
         headers = {'Authorization': f'Bearer {access_token}'}
         graph_response = requests.get('https://graph.microsoft.com/v1.0/me', headers=headers)
@@ -515,11 +518,9 @@ def callback():
         nombre = graph_data.get('displayName', 'Usuario')
         azure_id = graph_data.get('id')
         
-        # Buscar o crear usuario
         usuario = Usuario.query.filter_by(email=email).first()
         
         if not usuario:
-            # Verificar si es uno de los 5 admins iniciales
             total_usuarios = Usuario.query.count()
             rol = 'admin' if total_usuarios < 5 else 'usuario'
             
@@ -533,7 +534,7 @@ def callback():
             db.session.add(usuario)
             db.session.commit()
             
-            flash(f'¡Bienvenido a Uniagraria Sistema 2026!', 'success')
+            flash('¡Bienvenido a Uniagraria Sistema 2026!', 'success')
         else:
             usuario.ultimo_acceso = datetime.utcnow()
             db.session.commit()
@@ -555,7 +556,6 @@ def logout():
     logout_user()
     session.clear()
     
-    # Cerrar sesión en Azure AD también
     logout_url = f"https://login.microsoftonline.com/{os.environ.get('AZURE_TENANT_ID')}/oauth2/v2.0/logout"
     params = {
         'post_logout_redirect_uri': url_for('login', _external=True)
@@ -577,41 +577,14 @@ def index():
 @login_required
 @cache.cached(timeout=60)
 def dashboard():
-    """Dashboard principal con estadísticas"""
+    """Dashboard principal con estadísticas - SIN PANDAS NI PLOTLY"""
     try:
-        # Estadísticas generales
         total_registros = RecoleccionDato.query.filter_by(ano_periodo='2026-1').count()
         total_municipios = db.session.query(func.count(db.distinct(RecoleccionDato.municipio_id))).filter_by(ano_periodo='2026-1').scalar() or 0
         total_instituciones = db.session.query(func.count(db.distinct(RecoleccionDato.institucion_id))).filter_by(ano_periodo='2026-1').scalar() or 0
         completados = RecoleccionDato.query.filter_by(ano_periodo='2026-1', estado='completado').count()
         pendientes = RecoleccionDato.query.filter_by(ano_periodo='2026-1', estado='pendiente').count()
         
-        # Datos para gráficos
-        registros_por_municipio = db.session.query(
-            Municipio.nombre,
-            func.count(RecoleccionDato.id)
-        ).join(RecoleccionDato).filter(
-            RecoleccionDato.ano_periodo == '2026-1'
-        ).group_by(Municipio.nombre).all()
-        
-        # Crear gráfico de barras
-        if registros_por_municipio:
-            df_municipios = pd.DataFrame(registros_por_municipio, columns=['Municipio', 'Registros'])
-            fig = px.bar(df_municipios, x='Municipio', y='Registros', 
-                        title='Registros por Municipio - Facatativá 2026',
-                        color='Registros', 
-                        color_continuous_scale='Greens')
-            fig.update_layout(
-                plot_bgcolor='white',
-                paper_bgcolor='white',
-                font=dict(family="Arial", size=12),
-                title_font=dict(size=20, color='#2E7D32', family="Arial Black")
-            )
-            grafico_municipios = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
-        else:
-            grafico_municipios = None
-        
-        # Obtener registros recientes para el dashboard
         registros_recientes = RecoleccionDato.query.order_by(
             RecoleccionDato.fecha_registro.desc()
         ).limit(10).all()
@@ -623,7 +596,6 @@ def dashboard():
                              completados=completados,
                              pendientes=pendientes,
                              registros_recientes=registros_recientes,
-                             grafico_municipios=grafico_municipios,
                              usuario=current_user,
                              now=datetime.now)
     except Exception as e:
@@ -642,7 +614,6 @@ def recoleccion():
     municipios = Municipio.query.filter_by(activo=True).all()
     instituciones = Institucion.query.filter_by(activo=True).all()
     
-    # Obtener filtros
     municipio_id = request.args.get('municipio', type=int)
     periodo = request.args.get('periodo', '2026-1')
     
@@ -666,7 +637,6 @@ def api_crear_recoleccion():
     try:
         data = request.get_json()
         
-        # Validar email si existe
         if data.get('correo'):
             email_validado = validate_email_format(data['correo'])
             if not email_validado:
@@ -717,7 +687,6 @@ def api_actualizar_recoleccion(id):
         registro = RecoleccionDato.query.get_or_404(id)
         data = request.get_json()
         
-        # Validar email si existe
         if data.get('correo'):
             email_validado = validate_email_format(data['correo'])
             if not email_validado:
@@ -742,7 +711,7 @@ def api_actualizar_recoleccion(id):
         return jsonify({'error': 'Error al actualizar el registro'}), 500
 
 # ============================================================================
-# RUTAS DE IMPORTACIÓN DE DATOS - MEGA PROFESIONAL
+# RUTAS DE IMPORTACIÓN DE DATOS - SIN PANDAS
 # ============================================================================
 
 @app.route('/importacion')
@@ -762,7 +731,7 @@ def importacion():
 @admin_required
 @limiter.limit("10 per minute")
 def api_importar_excel():
-    """Importar archivo Excel con datos de recolección"""
+    """Importar archivo Excel con datos de recolección - SIN PANDAS"""
     try:
         if 'file' not in request.files:
             return jsonify({'error': 'No se envió ningún archivo'}), 400
@@ -773,28 +742,32 @@ def api_importar_excel():
             return jsonify({'error': 'Nombre de archivo vacío'}), 400
         
         if not allowed_file(file.filename):
-            return jsonify({'error': 'Tipo de archivo no permitido. Use Excel (.xlsx, .xls) o CSV'}), 400
+            return jsonify({'error': 'Tipo de archivo no permitido. Use Excel (.xlsx, .xls)'}), 400
         
-        # Leer el archivo Excel
         filename = secure_filename(file.filename)
         
-        try:
-            if filename.endswith('.csv'):
-                df = pd.read_csv(file)
-            else:
-                df = pd.read_excel(file)
-        except Exception as e:
-            return jsonify({'error': f'Error al leer el archivo: {str(e)}'}), 400
+        # Usar openpyxl directamente en lugar de pandas
+        from openpyxl import load_workbook
         
-        if df.empty:
+        try:
+            wb = load_workbook(file)
+            ws = wb.active
+            headers = [cell.value for cell in ws[1]]
+            data = []
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                if any(cell is not None for cell in row):
+                    data.append(dict(zip(headers, row)))
+        except Exception as e:
+            return jsonify({'error': f'Error al leer el archivo Excel: {str(e)}'}), 400
+        
+        if not data:
             return jsonify({'error': 'El archivo está vacío'}), 400
         
         registros_procesados = 0
         errores = []
         
-        for idx, row in df.iterrows():
+        for idx, row in enumerate(data, 2):
             try:
-                # Buscar o crear municipio
                 municipio_nombre = str(row.get('Municipio', row.get('municipio', ''))).strip()
                 if municipio_nombre:
                     municipio = Municipio.query.filter(
@@ -808,7 +781,6 @@ def api_importar_excel():
                 else:
                     municipio = None
                 
-                # Buscar o crear institución
                 institucion_nombre = str(row.get('Instalacion_Educativa', row.get('instalacion_educativa', ''))).strip()
                 if institucion_nombre and municipio:
                     institucion = Institucion.query.filter(
@@ -826,7 +798,6 @@ def api_importar_excel():
                 else:
                     institucion = None
                 
-                # Crear registro de recolección
                 registro = RecoleccionDato(
                     ficha_toma_registro=str(row.get('Ficha_toma_registro', row.get('ficha', '')))[:50],
                     asesor=str(row.get('Asesor', row.get('asesor', '')))[:255],
@@ -853,25 +824,22 @@ def api_importar_excel():
                 db.session.add(registro)
                 registros_procesados += 1
                 
-                # Commit cada 50 registros
                 if registros_procesados % 50 == 0:
                     db.session.commit()
                 
             except Exception as e:
                 db.session.rollback()
                 errores.append({
-                    'fila': idx + 2,
+                    'fila': idx,
                     'error': str(e)[:200]
                 })
         
-        # Commit final
         try:
             db.session.commit()
         except Exception as e:
             db.session.rollback()
             return jsonify({'error': f'Error al guardar registros: {str(e)}'}), 500
         
-        # Subir archivo a Cloudinary como respaldo
         try:
             file.seek(0)
             result = cloudinary.uploader.upload(
@@ -881,7 +849,6 @@ def api_importar_excel():
                 resource_type='raw'
             )
             
-            # Registrar importación
             archivo_importado = ArchivoImportado(
                 nombre_archivo=filename,
                 tipo='excel',
@@ -890,7 +857,7 @@ def api_importar_excel():
                 registros_procesados=registros_procesados,
                 estado='completado',
                 datos_metadata={
-                    'total_filas': len(df),
+                    'total_filas': len(data),
                     'procesados': registros_procesados,
                     'errores': len(errores),
                     'fecha': datetime.now().isoformat()
@@ -915,7 +882,7 @@ def api_importar_excel():
         return jsonify({'error': 'Error interno en el servidor'}), 500
 
 # ============================================================================
-# RUTAS DE REPORTES - SÚPER PROFESIONALES
+# RUTAS DE REPORTES - SIN PANDAS
 # ============================================================================
 
 @app.route('/reportes')
@@ -928,7 +895,7 @@ def reportes():
 @app.route('/api/reportes/general')
 @login_required
 def api_reporte_general():
-    """API para reporte general en JSON"""
+    """API para reporte general en JSON - SIN PANDAS"""
     try:
         periodo = request.args.get('periodo', '2026-1')
         municipio_id = request.args.get('municipio_id', type=int)
@@ -940,7 +907,6 @@ def api_reporte_general():
         
         registros = query.all()
         
-        # Estadísticas
         stats = {
             'total': len(registros),
             'completados': sum(1 for r in registros if r.estado == 'completado'),
@@ -951,15 +917,10 @@ def api_reporte_general():
         }
         
         for r in registros:
-            # Por grado
             if r.grado:
                 stats['por_grado'][r.grado] = stats['por_grado'].get(r.grado, 0) + 1
-            
-            # Por programa
             if r.programa_interes:
                 stats['por_programa'][r.programa_interes] = stats['por_programa'].get(r.programa_interes, 0) + 1
-            
-            # Por municipio
             if r.municipio:
                 nombre_municipio = r.municipio.nombre
                 stats['por_municipio'][nombre_municipio] = stats['por_municipio'].get(nombre_municipio, 0) + 1
@@ -1008,16 +969,13 @@ def api_exportar_pdf():
     try:
         periodo = request.args.get('periodo', '2026-1')
         
-        # Obtener datos
         registros = RecoleccionDato.query.filter_by(ano_periodo=periodo).all()
         total_registros = len(registros)
         
-        # Crear PDF con ReportLab
         buffer = BytesIO()
         doc = SimpleDocTemplate(buffer, pagesize=A4)
         elements = []
         
-        # Estilos
         styles = getSampleStyleSheet()
         title_style = ParagraphStyle(
             'CustomTitle',
@@ -1028,11 +986,9 @@ def api_exportar_pdf():
             alignment=1
         )
         
-        # Título
         elements.append(Paragraph(f'UNIAGRARIA - RECOLECCIÓN FACATATIVÁ {periodo}', title_style))
         elements.append(Spacer(1, 20))
         
-        # Información general
         info_style = ParagraphStyle(
             'InfoStyle',
             parent=styles['Normal'],
@@ -1045,7 +1001,6 @@ def api_exportar_pdf():
         elements.append(Paragraph(f'Generado por: {current_user.nombre}', info_style))
         elements.append(Spacer(1, 30))
         
-        # Tabla de datos
         data = [['ID', 'Nombre', 'Municipio', 'Institución', 'Grado', 'Estado']]
         
         for r in registros[:50]:
@@ -1072,7 +1027,6 @@ def api_exportar_pdf():
         
         elements.append(table)
         
-        # Construir PDF
         doc.build(elements)
         buffer.seek(0)
         
@@ -1149,7 +1103,6 @@ def api_subir_imagen_feria(feria_id):
         for file in files:
             if file and allowed_file(file.filename, 'image'):
                 try:
-                    # Subir a Cloudinary
                     result = cloudinary.uploader.upload(
                         file,
                         folder=f'uniagraria/ferias/{feria_id}',
@@ -1160,7 +1113,6 @@ def api_subir_imagen_feria(feria_id):
                         ]
                     )
                     
-                    # Guardar en base de datos
                     imagen = FeriaImagen(
                         feria_id=feria_id,
                         public_id=result['public_id'],
@@ -1233,34 +1185,28 @@ def archivos():
 def api_comprimir_todo():
     """Comprimir todos los datos e imágenes en ZIP"""
     try:
-        # Crear buffer para el ZIP
         zip_buffer = BytesIO()
         
         with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
             
-            # 1. Exportar datos de recolección a JSON
             registros = RecoleccionDato.query.filter_by(ano_periodo='2026-1').all()
             datos_recoleccion = [r.to_dict() for r in registros]
             zip_file.writestr('recoleccion_datos_2026-1.json', 
                             json.dumps(datos_recoleccion, indent=2, default=str))
             
-            # 2. Exportar datos de ferias
             ferias_list = Feria.query.all()
             datos_ferias = [f.to_dict() for f in ferias_list]
             zip_file.writestr('ferias.json', 
                             json.dumps(datos_ferias, indent=2, default=str))
             
-            # 3. Exportar imágenes de ferias (URLs)
             imagenes = FeriaImagen.query.all()
             datos_imagenes = [i.to_dict() for i in imagenes]
             zip_file.writestr('ferias_imagenes.json', 
                             json.dumps(datos_imagenes, indent=2, default=str))
             
-            # 4. Exportar a Excel
             excel_buffer = generar_excel_recoleccion()
             zip_file.writestr('recoleccion_datos_2026-1.xlsx', excel_buffer.getvalue())
             
-            # 5. Generar y agregar PDF
             pdf_buffer = BytesIO()
             doc = SimpleDocTemplate(pdf_buffer, pagesize=A4)
             elements = []
@@ -1270,7 +1216,6 @@ def api_comprimir_todo():
             doc.build(elements)
             zip_file.writestr('reporte_completo_2026-1.pdf', pdf_buffer.getvalue())
             
-            # 6. Agregar README
             readme_content = f"""UNIAGRARIA - SISTEMA DE RECOLECCIÓN FACATATIVÁ 2026
 ================================================
 Fecha de exportación: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}
@@ -1362,7 +1307,7 @@ def ratelimit_error(error):
                          error_message='Demasiadas solicitudes. Por favor espere.'), 429
 
 # ============================================================================
-# INICIALIZACIÓN DE LA APLICACIÓN - CORREGIDA PARA FLASK 2.3+
+# INICIALIZACIÓN DE LA APLICACIÓN
 # ============================================================================
 
 def init_database():
@@ -1371,7 +1316,6 @@ def init_database():
         try:
             db.create_all()
             
-            # Crear municipios iniciales si no existen
             municipios_iniciales = [
                 'Facatativá', 'Bogotá', 'Madrid', 'Mosquera', 
                 'Funza', 'El Rosal', 'Subachoque', 'Zipacón'
@@ -1381,7 +1325,6 @@ def init_database():
                 if not Municipio.query.filter_by(nombre=m).first():
                     db.session.add(Municipio(nombre=m))
             
-            # Crear 5 usuarios admin por defecto
             admins_default = [
                 {'email': 'admin1@uniagraria.edu.co', 'nombre': 'Administrador Principal', 'rol': 'admin'},
                 {'email': 'admin2@uniagraria.edu.co', 'nombre': 'Coordinador de Recolección', 'rol': 'admin'},
@@ -1403,7 +1346,6 @@ def init_database():
             app.logger.error(f"❌ Error al inicializar base de datos: {str(e)}")
             return False
 
-# Inicializar base de datos al arrancar
 with app.app_context():
     init_database()
 

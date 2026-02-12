@@ -9,6 +9,8 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn app:app
     envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
       - key: DATABASE_URL
         sync: false
       - key: CLOUDINARY_CLOUD_NAME
@@ -17,8 +19,6 @@ services:
         sync: false
       - key: CLOUDINARY_API_SECRET
         sync: false
-      - key: SECRET_KEY
-        generateValue: true
       - key: AZURE_CLIENT_ID
         sync: false
       - key: AZURE_CLIENT_SECRET
@@ -26,4 +26,6 @@ services:
       - key: AZURE_TENANT_ID
         sync: false
       - key: AZURE_REDIRECT_URI
-        value: https://sistema-de-recolecci-n-facatativ.onrender.com/callback
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
