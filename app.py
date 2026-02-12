@@ -60,7 +60,7 @@ from cloudinary.utils import cloudinary_url
 #mport numpy as np
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-from openpyxl.utils.dataframe import dataframe_to_rows
+
 from PIL import Image
 #mport plotly
 #mport plotly.express as px
