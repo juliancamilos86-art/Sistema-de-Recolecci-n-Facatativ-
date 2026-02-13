@@ -124,7 +124,7 @@
             opacity: 0.95;
         }
 
-        /* NUEVO: Botón Microsoft */
+        /* Botón Microsoft */
         .btn-microsoft {
             display: flex;
             align-items: center;
@@ -153,7 +153,7 @@
             flex-shrink: 0;
         }
 
-        /* NUEVO: Divisor */
+        /* Divisor */
         .login-divider {
             display: flex;
             align-items: center;
@@ -214,7 +214,6 @@
         <div class="login-header">
             <!-- Logo institucional -->
             <img src="{{ url_for('static', filename='uploads/LogoU.png') }}" alt="Logo UNIAGRARIA" class="logo">
-
             <i class="bi bi-shield-lock"></i>
             <h3 class="mb-0">Sistema de Gestión de Activos</h3>
             <p class="mb-0">UNIAGRARIA</p>
@@ -233,9 +232,9 @@
             {% endwith %}
             
             <!-- ============================================ -->
-            <!-- BOTÓN MICROSOFT 365 (NUEVO) -->
+            <!-- BOTÓN MICROSOFT 365 - CORREGIDO -->
             <!-- ============================================ -->
-            <a href="{{ url_for('routes_bp.login_microsoft') }}" class="btn btn-microsoft w-100">
+            <a href="{{ url_for('login') }}" class="btn btn-microsoft w-100">
                 <svg width="21" height="21" viewBox="0 0 21 21" xmlns="http://www.w3.org/2000/svg">
                     <rect x="0" y="0" width="10" height="10" fill="#f25022"/>
                     <rect x="11" y="0" width="10" height="10" fill="#7fba00"/>
@@ -251,6 +250,44 @@
 
             <!-- Divisor -->
             <div class="login-divider">
+                <span>O CONTINÚA CON</span>
             </div>
+
+            <!-- Formulario de respaldo (solo admins) -->
+            <form method="POST" action="{{ url_for('login') }}">
+                <div class="mb-3">
+                    <label for="email" class="form-label">
+                        <i class="bi bi-envelope-fill"></i> Correo institucional
+                    </label>
+                    <input type="email" class="form-control" id="email" name="email" 
+                           placeholder="usuario@uniagraria.edu.co" required>
+                </div>
+                <div class="mb-4">
+                    <label for="password" class="form-label">
+                        <i class="bi bi-lock-fill"></i> Contraseña
+                    </label>
+                    <input type="password" class="form-control" id="password" name="password" 
+                           placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="btn btn-login w-100">
+                    <i class="bi bi-box-arrow-in-right me-2"></i>Iniciar Sesión
+                </button>
+            </form>
             
-          
+            <hr>
+            <div class="text-center text-muted small">
+                <p class="mb-0 mt-3">
+                    <i class="bi bi-shield-check me-1"></i>
+                    Acceso exclusivo para personal autorizado
+                </p>
+                <p class="mb-0 mt-2">
+                    <i class="bi bi-microsoft me-1"></i>
+                    Microsoft 365 | Azure Active Directory
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
