@@ -38,7 +38,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 # Base de datos
 from sqlalchemy import create_engine, text, func, and_, or_, desc
 from sqlalchemy.dialects.postgresql import JSON, UUID, ARRAY
-from sqlchemy.exc import SQLAlchemyError, IntegrityError
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from sqlalchemy.orm import declarative_base, relationship
 
 # Azure AD
