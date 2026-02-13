@@ -7,7 +7,6 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <style>
-        /* Fondo con video */
         body {
             margin: 0;
             font-family: 'Arial', sans-serif;
@@ -18,8 +17,6 @@
             position: relative;
             overflow: hidden;
         }
-
-        /* Video institucional */
         video#background-video {
             position: fixed;
             top: 0;
@@ -32,8 +29,6 @@
             object-fit: cover;
             filter: brightness(0.55) saturate(1.1);
         }
-
-        /* Tarjeta de login */
         .login-card {
             background: rgba(255, 255, 255, 0.95);
             border-radius: 25px;
@@ -44,12 +39,10 @@
             transition: transform 0.3s ease, box-shadow 0.3s ease;
             backdrop-filter: blur(10px);
         }
-
         .login-card:hover {
             transform: translateY(-6px);
             box-shadow: 0 25px 60px rgba(0, 0, 0, 0.4);
         }
-
         .login-header {
             background: linear-gradient(135deg, #1C7C54 0%, #4CAF7C 100%);
             color: white;
@@ -57,7 +50,6 @@
             text-align: center;
             border-bottom: 4px solid #fff;
         }
-
         .login-header .logo {
             width: 120px;
             height: auto;
@@ -67,46 +59,38 @@
             padding: 5px;
             box-shadow: 0 0 10px rgba(255,255,255,0.3);
         }
-
         .login-header i {
             font-size: 55px;
             margin-bottom: 10px;
             display: block;
         }
-
         .login-header h3 {
             font-weight: 700;
             font-size: 22px;
         }
-
         .login-header p {
             font-size: 15px;
             opacity: 0.9;
             margin-top: 4px;
             letter-spacing: 1px;
         }
-
         .login-body {
             padding: 40px 35px;
         }
-
         .form-label i {
             color: #1C7C54;
             margin-right: 6px;
         }
-
         .form-control {
             border-radius: 10px;
             border: 1px solid #ced4da;
             padding: 12px 15px;
             font-size: 15px;
         }
-
         .form-control:focus {
             border-color: #1C7C54;
             box-shadow: 0 0 0 0.25rem rgba(28, 124, 84, 0.25);
         }
-
         .btn-login {
             background: linear-gradient(135deg, #1C7C54 0%, #4CAF7C 100%);
             border: none;
@@ -117,14 +101,11 @@
             border-radius: 10px;
             transition: all 0.3s ease;
         }
-
         .btn-login:hover {
             transform: translateY(-2px);
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
             opacity: 0.95;
         }
-
-        /* Botón Microsoft */
         .btn-microsoft {
             display: flex;
             align-items: center;
@@ -141,40 +122,33 @@
             transition: all 0.3s ease;
             margin-bottom: 20px;
         }
-
         .btn-microsoft:hover {
             background: #000;
             color: white;
             transform: translateY(-2px);
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
         }
-
         .btn-microsoft svg {
             flex-shrink: 0;
         }
-
-        /* Divisor */
         .login-divider {
             display: flex;
             align-items: center;
             text-align: center;
             margin: 25px 0;
         }
-
         .login-divider::before,
         .login-divider::after {
             content: '';
             flex: 1;
             border-bottom: 1px solid #dee2e6;
         }
-
         .login-divider span {
             padding: 0 15px;
             color: #6c757d;
             font-size: 13px;
             font-weight: 500;
         }
-
         .microsoft-hint {
             text-align: center;
             color: #6c757d;
@@ -182,13 +156,11 @@
             margin-top: 8px;
             margin-bottom: 0;
         }
-
         hr {
             border-top: 1px solid #e0e0e0;
             margin-top: 35px;
             margin-bottom: 0;
         }
-
         @media (max-width: 480px) {
             .login-card {
                 margin: 20px;
@@ -203,8 +175,6 @@
     </style>
 </head>
 <body>
-
-    <!-- 🎥 Video institucional de fondo -->
     <video id="background-video" autoplay loop muted playsinline>
         <source src="{{ url_for('static', filename='uploads/FrenteU.mp4') }}" type="video/mp4">
         Tu navegador no soporta videos HTML5.
@@ -212,7 +182,6 @@
 
     <div class="login-card">
         <div class="login-header">
-            <!-- Logo institucional -->
             <img src="{{ url_for('static', filename='uploads/LogoU.png') }}" alt="Logo UNIAGRARIA" class="logo">
             <i class="bi bi-shield-lock"></i>
             <h3 class="mb-0">Sistema de Gestión de Activos</h3>
@@ -231,9 +200,7 @@
                 {% endif %}
             {% endwith %}
             
-            <!-- ============================================ -->
-            <!-- BOTÓN MICROSOFT 365 - CORREGIDO -->
-            <!-- ============================================ -->
+            <!-- BOTÓN MICROSOFT -->
             <a href="{{ url_for('login') }}" class="btn btn-microsoft w-100">
                 <svg width="21" height="21" viewBox="0 0 21 21" xmlns="http://www.w3.org/2000/svg">
                     <rect x="0" y="0" width="10" height="10" fill="#f25022"/>
@@ -248,12 +215,14 @@
                 Usa tu cuenta institucional @uniagraria.edu.co
             </p>
 
-            <!-- Divisor -->
+            <!-- DIVISOR -->
             <div class="login-divider">
                 <span>O CONTINÚA CON</span>
             </div>
 
-            <!-- Formulario de respaldo (solo admins) -->
+            <!-- ============================================ -->
+            <!-- FORMULARIO DE RESPALDO - ESTE SÍ FUNCIONA -->
+            <!-- ============================================ -->
             <form method="POST" action="{{ url_for('login') }}">
                 <div class="mb-3">
                     <label for="email" class="form-label">
@@ -287,7 +256,6 @@
             </div>
         </div>
     </div>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
