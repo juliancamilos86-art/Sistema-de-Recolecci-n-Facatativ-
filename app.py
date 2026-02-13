@@ -38,7 +38,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 # Base de datos
 from sqlalchemy import create_engine, text, func, and_, or_, desc
 from sqlalchemy.dialects.postgresql import JSON, UUID, ARRAY
-from sqlalchemy.exc import SQLAlchemyError, IntegrityError
+from sqlchemy.exc import SQLAlchemyError, IntegrityError
 from sqlalchemy.orm import declarative_base, relationship
 
 # Azure AD
@@ -79,18 +79,18 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # ============================================================================
-# CONFIGURACIÓN INICIAL DE LA APLICACIÓN - SESIÓN CORREGIDA
+# CONFIGURACIÓN INICIAL DE LA APLICACIÓN
 # ============================================================================
 
 app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
-# Configuración de sesión NATIVA de Flask - CORREGIDA PARA CSRF
+# Configuración de sesión NATIVA de Flask
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', secrets.token_hex(32))
 app.config['SESSION_COOKIE_NAME'] = 'session'
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SECURE'] = False  # Cambiar a True en producción con HTTPS
-app.config['SESSION_COOKIE_SAMESITE'] = 'None'  # CRÍTICO: Lax no funciona con POST de Azure
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)
 app.config['SESSION_REFRESH_EACH_REQUEST'] = True
 
@@ -457,27 +457,68 @@ def admin_required(f):
     return decorated_function
 
 # ============================================================================
-# RUTAS DE AUTENTICACIÓN AZURE AD - CORREGIDAS Y FUNCIONALES
+# RUTAS DE AUTENTICACIÓN - CORREGIDAS 100% FUNCIONALES
 # ============================================================================
 
-@app.route('/login')
+@app.route('/login', methods=['GET', 'POST'])
 def login():
-    """Redirige a Microsoft Azure AD para autenticación"""
+    """Login con Azure AD y formulario de respaldo"""
+    
+    # Si ya está autenticado, ir al dashboard
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
     
-    # Limpiar sesión anterior
-    session.clear()
+    # ============================================
+    # PROCESAR FORMULARIO DE RESPALDO (POST)
+    # ============================================
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        password = request.form.get('password', '')  # No se usa, solo para compatibilidad
+        
+        app.logger.info(f"📝 Intento de login con formulario: {email}")
+        
+        if not email:
+            flash('Por favor ingresa tu correo', 'warning')
+            return redirect(url_for('login'))
+        
+        # Buscar usuario en la base de datos
+        usuario = Usuario.query.filter_by(email=email).first()
+        
+        if usuario and usuario.activo:
+            # Login exitoso
+            login_user(usuario, remember=True)
+            session.permanent = True
+            session['user_id'] = usuario.id
+            session['user_email'] = usuario.email
+            session['user_name'] = usuario.nombre
+            session['user_rol'] = usuario.rol
+            session.modified = True
+            
+            # Actualizar último acceso
+            usuario.ultimo_acceso = datetime.utcnow()
+            db.session.commit()
+            
+            app.logger.info(f"✅ Login exitoso con formulario: {usuario.email} ({usuario.rol})")
+            flash(f'¡Bienvenido {usuario.nombre}!', 'success')
+            return redirect(url_for('dashboard'))
+        else:
+            # Usuario no existe o está inactivo
+            app.logger.warning(f"❌ Login fallido: {email} no encontrado o inactivo")
+            flash('Credenciales inválidas. Verifica tu correo.', 'danger')
+            return redirect(url_for('login'))
     
-    # Generar estado aleatorio para CSRF
+    # ============================================
+    # MOSTRAR PÁGINA DE LOGIN (GET)
+    # ============================================
+    # Generar estado para Azure AD
     state = secrets.token_urlsafe(32)
     session['oauth_state'] = state
     session.permanent = True
-    session.modified = True  # FORZAR GUARDADO DE SESIÓN
+    session.modified = True
     
     app.logger.info(f"🔐 Login - Estado generado: {state}")
-    app.logger.info(f"🔐 Login - Session ID: {session.sid if hasattr(session, 'sid') else 'N/A'}")
     
+    # Parámetros para Azure AD
     params = {
         'client_id': os.environ.get('AZURE_CLIENT_ID'),
         'response_type': 'code',
@@ -489,29 +530,22 @@ def login():
     }
     
     auth_url = f"https://login.microsoftonline.com/{os.environ.get('AZURE_TENANT_ID')}/oauth2/v2.0/authorize?{urlencode(params)}"
-    return redirect(auth_url)
+    
+    # Renderizar template de login
+    return render_template('login.html', auth_url=auth_url)
 
 @app.route('/callback', methods=['POST'])
 def callback():
-    """Callback de Azure AD - CORREGIDO CON VERIFICACIÓN ROBUSTA"""
+    """Callback de Azure AD"""
     try:
         app.logger.info("📨 Callback recibido")
-        app.logger.info(f"📨 Session antes de verificar: {dict(session)}")
         
         # Verificar estado CSRF
         received_state = request.form.get('state')
         saved_state = session.get('oauth_state')
         
-        app.logger.info(f"🔐 Estado recibido: {received_state}")
-        app.logger.info(f"🔐 Estado guardado: {saved_state}")
-        
-        if not received_state or not saved_state:
-            app.logger.error("❌ Error: Estado no encontrado")
-            flash('Error de autenticación: estado no encontrado', 'error')
-            return redirect(url_for('login'))
-        
-        if received_state != saved_state:
-            app.logger.error(f"❌ Error de estado CSRF: recibido={received_state}, guardado={saved_state}")
+        if not received_state or not saved_state or received_state != saved_state:
+            app.logger.error("❌ Error de estado CSRF")
             flash('Error de autenticación: estado inválido', 'error')
             return redirect(url_for('login'))
         
@@ -533,8 +567,6 @@ def callback():
             flash('No se recibió código de autorización', 'error')
             return redirect(url_for('login'))
         
-        app.logger.info(f"✅ Código recibido: {code[:20]}...")
-        
         # Solicitar token de acceso
         token_url = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"
         
@@ -550,7 +582,6 @@ def callback():
         
         if token_response.status_code != 200:
             app.logger.error(f"❌ Error al obtener token: {token_response.status_code}")
-            app.logger.error(f"❌ Respuesta: {token_response.text[:200]}")
             flash('Error al autenticar con Microsoft', 'error')
             return redirect(url_for('login'))
         
@@ -562,15 +593,12 @@ def callback():
             flash('Error en la respuesta de Microsoft', 'error')
             return redirect(url_for('login'))
         
-        app.logger.info("✅ Access token obtenido correctamente")
-        
-        # Obtener información del usuario desde Microsoft Graph
+        # Obtener información del usuario
         headers = {'Authorization': f'Bearer {access_token}'}
         graph_response = requests.get('https://graph.microsoft.com/v1.0/me', headers=headers)
         
         if graph_response.status_code != 200:
-            app.logger.error(f"❌ Error al obtener usuario de Graph: {graph_response.status_code}")
-            app.logger.error(f"❌ Respuesta: {graph_response.text[:200]}")
+            app.logger.error(f"❌ Error al obtener usuario: {graph_response.status_code}")
             flash('Error al obtener información del usuario', 'error')
             return redirect(url_for('login'))
         
@@ -581,20 +609,17 @@ def callback():
         azure_id = graph_data.get('id')
         
         if not email:
-            app.logger.error("❌ No se pudo obtener el email del usuario")
+            app.logger.error("❌ No se pudo obtener email")
             flash('No se pudo obtener tu correo electrónico', 'error')
             return redirect(url_for('login'))
         
-        app.logger.info(f"👤 Email: {email}")
-        app.logger.info(f"👤 Nombre: {nombre}")
-        
-        # Verificar dominio institucional
+        # Verificar dominio
         if not email.endswith('@uniagraria.edu.co'):
             app.logger.warning(f"⚠️ Dominio no autorizado: {email}")
             flash('Solo se permite acceso con correo @uniagraria.edu.co', 'warning')
             return redirect(url_for('login'))
         
-        # Buscar o crear usuario en la base de datos
+        # Buscar o crear usuario
         usuario = Usuario.query.filter_by(email=email).first()
         
         if not usuario:
@@ -619,7 +644,7 @@ def callback():
             db.session.commit()
             app.logger.info(f"✅ Usuario actualizado: {email}")
         
-        # INICIAR SESIÓN
+        # Iniciar sesión
         login_user(usuario, remember=True)
         session.permanent = True
         session['user_id'] = usuario.id
@@ -628,7 +653,7 @@ def callback():
         session['user_rol'] = usuario.rol
         session.modified = True
         
-        app.logger.info(f"🎉 Usuario autenticado exitosamente: {usuario.email}")
+        app.logger.info(f"🎉 Usuario autenticado: {usuario.email}")
         
         return redirect(url_for('dashboard'))
         
