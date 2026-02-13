@@ -79,18 +79,18 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # ============================================================================
-# CONFIGURACIÓN INICIAL DE LA APLICACIÓN - SIN FLASK-SESSION
+# CONFIGURACIÓN INICIAL DE LA APLICACIÓN - SESIÓN CORREGIDA
 # ============================================================================
 
 app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
-# Configuración de sesión NATIVA de Flask (NO flask-session)
+# Configuración de sesión NATIVA de Flask - CORREGIDA PARA CSRF
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', secrets.token_hex(32))
 app.config['SESSION_COOKIE_NAME'] = 'session'
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SECURE'] = False  # Cambiar a True en producción con HTTPS
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_SAMESITE'] = 'None'  # CRÍTICO: Lax no funciona con POST de Azure
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)
 app.config['SESSION_REFRESH_EACH_REQUEST'] = True
 
@@ -466,12 +466,17 @@ def login():
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
     
+    # Limpiar sesión anterior
+    session.clear()
+    
     # Generar estado aleatorio para CSRF
     state = secrets.token_urlsafe(32)
     session['oauth_state'] = state
     session.permanent = True
+    session.modified = True  # FORZAR GUARDADO DE SESIÓN
     
     app.logger.info(f"🔐 Login - Estado generado: {state}")
+    app.logger.info(f"🔐 Login - Session ID: {session.sid if hasattr(session, 'sid') else 'N/A'}")
     
     params = {
         'client_id': os.environ.get('AZURE_CLIENT_ID'),
@@ -488,16 +493,25 @@ def login():
 
 @app.route('/callback', methods=['POST'])
 def callback():
-    """Callback de Azure AD"""
+    """Callback de Azure AD - CORREGIDO CON VERIFICACIÓN ROBUSTA"""
     try:
         app.logger.info("📨 Callback recibido")
+        app.logger.info(f"📨 Session antes de verificar: {dict(session)}")
         
         # Verificar estado CSRF
         received_state = request.form.get('state')
         saved_state = session.get('oauth_state')
         
-        if not received_state or not saved_state or received_state != saved_state:
-            app.logger.error("❌ Error de estado CSRF")
+        app.logger.info(f"🔐 Estado recibido: {received_state}")
+        app.logger.info(f"🔐 Estado guardado: {saved_state}")
+        
+        if not received_state or not saved_state:
+            app.logger.error("❌ Error: Estado no encontrado")
+            flash('Error de autenticación: estado no encontrado', 'error')
+            return redirect(url_for('login'))
+        
+        if received_state != saved_state:
+            app.logger.error(f"❌ Error de estado CSRF: recibido={received_state}, guardado={saved_state}")
             flash('Error de autenticación: estado inválido', 'error')
             return redirect(url_for('login'))
         
@@ -508,18 +522,20 @@ def callback():
         redirect_uri = os.environ.get('AZURE_REDIRECT_URI')
         
         if not all([tenant_id, client_id, client_secret, redirect_uri]):
-            app.logger.error("❌ Faltan variables de entorno")
+            app.logger.error("❌ Faltan variables de entorno de Azure AD")
             flash('Error de configuración de autenticación', 'error')
             return redirect(url_for('login'))
         
         # Obtener código de autorización
         code = request.form.get('code')
         if not code:
-            app.logger.error("❌ No se recibió código")
+            app.logger.error("❌ No se recibió código de autorización")
             flash('No se recibió código de autorización', 'error')
             return redirect(url_for('login'))
         
-        # Solicitar token
+        app.logger.info(f"✅ Código recibido: {code[:20]}...")
+        
+        # Solicitar token de acceso
         token_url = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"
         
         token_data = {
@@ -534,6 +550,7 @@ def callback():
         
         if token_response.status_code != 200:
             app.logger.error(f"❌ Error al obtener token: {token_response.status_code}")
+            app.logger.error(f"❌ Respuesta: {token_response.text[:200]}")
             flash('Error al autenticar con Microsoft', 'error')
             return redirect(url_for('login'))
         
@@ -545,12 +562,15 @@ def callback():
             flash('Error en la respuesta de Microsoft', 'error')
             return redirect(url_for('login'))
         
-        # Obtener información del usuario
+        app.logger.info("✅ Access token obtenido correctamente")
+        
+        # Obtener información del usuario desde Microsoft Graph
         headers = {'Authorization': f'Bearer {access_token}'}
         graph_response = requests.get('https://graph.microsoft.com/v1.0/me', headers=headers)
         
         if graph_response.status_code != 200:
-            app.logger.error(f"❌ Error al obtener usuario: {graph_response.status_code}")
+            app.logger.error(f"❌ Error al obtener usuario de Graph: {graph_response.status_code}")
+            app.logger.error(f"❌ Respuesta: {graph_response.text[:200]}")
             flash('Error al obtener información del usuario', 'error')
             return redirect(url_for('login'))
         
@@ -561,17 +581,20 @@ def callback():
         azure_id = graph_data.get('id')
         
         if not email:
-            app.logger.error("❌ No se pudo obtener email")
+            app.logger.error("❌ No se pudo obtener el email del usuario")
             flash('No se pudo obtener tu correo electrónico', 'error')
             return redirect(url_for('login'))
         
-        # Verificar dominio
+        app.logger.info(f"👤 Email: {email}")
+        app.logger.info(f"👤 Nombre: {nombre}")
+        
+        # Verificar dominio institucional
         if not email.endswith('@uniagraria.edu.co'):
             app.logger.warning(f"⚠️ Dominio no autorizado: {email}")
             flash('Solo se permite acceso con correo @uniagraria.edu.co', 'warning')
             return redirect(url_for('login'))
         
-        # Buscar o crear usuario
+        # Buscar o crear usuario en la base de datos
         usuario = Usuario.query.filter_by(email=email).first()
         
         if not usuario:
@@ -603,8 +626,9 @@ def callback():
         session['user_email'] = usuario.email
         session['user_name'] = usuario.nombre
         session['user_rol'] = usuario.rol
+        session.modified = True
         
-        app.logger.info(f"🎉 Usuario autenticado: {usuario.email}")
+        app.logger.info(f"🎉 Usuario autenticado exitosamente: {usuario.email}")
         
         return redirect(url_for('dashboard'))
         
