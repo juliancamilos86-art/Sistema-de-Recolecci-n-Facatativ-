@@ -792,7 +792,7 @@ def api_crear_feria():
 @app.route('/api/ferias/<int:feria_id>/imagenes', methods=['POST'])
 @login_required
 def api_subir_imagen_feria(feria_id):
-    """Subir imágenes de feria a Cloudinary o local"""
+    """Subir imágenes de feria a Cloudinary o local - VERSIÓN CORREGIDA"""
     try:
         feria = Feria.query.get_or_404(feria_id)
         
@@ -803,6 +803,8 @@ def api_subir_imagen_feria(feria_id):
         imagenes_subidas = []
         errores = []
         
+        print(f"📸 Recibidas {len(files)} imágenes para la feria {feria_id}")
+        
         for file in files:
             if file and allowed_file(file.filename, 'image'):
                 try:
@@ -810,8 +812,12 @@ def api_subir_imagen_feria(feria_id):
                     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
                     random_hex = secrets.token_hex(4)
                     
+                    url = ""
+                    public_id = ""
+                    
                     # Intentar subir a Cloudinary si está configurado
                     if CLOUDINARY_CONFIGURED:
+                        print(f"☁️ Subiendo a Cloudinary: {filename}")
                         result = cloudinary.uploader.upload(
                             file,
                             folder=f'uniagraria/ferias/{feria_id}',
@@ -823,6 +829,7 @@ def api_subir_imagen_feria(feria_id):
                         )
                         url = result['secure_url']
                         public_id = result['public_id']
+                        print(f"✅ Subido a Cloudinary: {url}")
                     else:
                         # Guardar localmente
                         safe_filename = f"{timestamp}_{random_hex}_{filename}"
@@ -830,59 +837,93 @@ def api_subir_imagen_feria(feria_id):
                         file.save(file_path)
                         url = url_for('static', filename=f'uploads/{safe_filename}', _external=True)
                         public_id = safe_filename
+                        print(f"💾 Guardado localmente: {url}")
                     
+                    # Crear el registro en la base de datos
                     imagen = FeriaImagen(
                         feria_id=feria_id,
                         public_id=public_id,
                         url=url,
                         descripcion=request.form.get('descripcion', ''),
-                        usuario_subida_id=current_user.id
+                        usuario_subida_id=current_user.id,
+                        fecha_subida=datetime.utcnow()
                     )
                     
                     db.session.add(imagen)
+                    db.session.flush()  # Forzar la asignación de ID
+                    print(f"📝 Registro creado en BD con ID: {imagen.id}")
+                    
                     imagenes_subidas.append({
                         'url': url,
-                        'public_id': public_id
+                        'public_id': public_id,
+                        'id': imagen.id
                     })
                     
                 except Exception as e:
+                    print(f"❌ Error procesando {filename}: {str(e)}")
                     errores.append({
                         'filename': file.filename,
                         'error': str(e)
                     })
+                    db.session.rollback()
+            else:
+                errores.append({
+                    'filename': file.filename,
+                    'error': 'Tipo de archivo no permitido'
+                })
         
+        # Hacer commit de todas las imágenes subidas exitosamente
         if imagenes_subidas:
-            db.session.commit()
+            try:
+                db.session.commit()
+                print(f"✅ COMMIT EXITOSO: {len(imagenes_subidas)} imágenes guardadas en BD")
+            except Exception as e:
+                db.session.rollback()
+                print(f"❌ Error en commit: {str(e)}")
+                return jsonify({'error': f'Error al guardar en base de datos: {str(e)}'}), 500
+        
+        # Verificar que se guardaron
+        verificacion = FeriaImagen.query.filter_by(feria_id=feria_id).count()
+        print(f"🔍 Total imágenes en BD para feria {feria_id}: {verificacion}")
         
         return jsonify({
             'message': f'{len(imagenes_subidas)} imágenes subidas exitosamente',
             'imagenes': imagenes_subidas,
             'errores': errores,
+            'total_en_bd': verificacion,
             'cloudinary_configurado': CLOUDINARY_CONFIGURED
-        })
+        }), 200
         
     except Exception as e:
         db.session.rollback()
         app.logger.error(f"Error al subir imágenes: {str(e)}")
-        return jsonify({'error': 'Error al subir las imágenes'}), 500
+        print(f"❌ Error general: {str(e)}")
+        return jsonify({'error': f'Error al subir las imágenes: {str(e)}'}), 500
 
 @app.route('/api/ferias/<int:feria_id>/imagenes', methods=['GET'])
 @login_required
 def api_obtener_imagenes_feria(feria_id):
-    """Obtener imágenes de una feria"""
+    """Obtener imágenes de una feria - VERSIÓN VERIFICADA"""
     try:
+        # Verificar que la feria existe
+        feria = Feria.query.get_or_404(feria_id)
+        
+        # Obtener imágenes
         imagenes = FeriaImagen.query.filter_by(feria_id=feria_id).order_by(
             FeriaImagen.fecha_subida.desc()
         ).all()
         
+        print(f"🔍 GET imágenes para feria {feria_id}: {len(imagenes)} encontradas")
+        
         return jsonify({
-            'imagenes': [i.to_dict() for i in imagenes]
+            'imagenes': [i.to_dict() for i in imagenes],
+            'total': len(imagenes)
         })
         
     except Exception as e:
         app.logger.error(f"Error al obtener imágenes: {str(e)}")
-        return jsonify({'error': 'Error al obtener imágenes'}), 500
-
+        print(f"❌ Error en GET: {str(e)}")
+        return jsonify({'error': 'Error al obtener imágenes', 'detalle': str(e)}), 500
 @app.route('/api/ferias/imagenes/<path:public_id>', methods=['DELETE'])
 @login_required
 def api_eliminar_imagen(public_id):
