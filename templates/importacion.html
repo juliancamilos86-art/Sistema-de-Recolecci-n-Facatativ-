@@ -9,7 +9,7 @@
         <div>
             <h2 class="text-success">
                 <i class="fas fa-file-import me-2"></i>
-                Importación de Datos
+                Importación de Datos Masivos
             </h2>
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb">
@@ -41,15 +41,21 @@
                         <i class="fas fa-info-circle me-2"></i>
                         Formatos soportados: <strong>.xlsx, .xls, .csv</strong>
                         <br>
-                        <small>Tamaño máximo: 500MB</small>
+                        <small>Tamaño máximo: 500MB - Hasta 10,000 registros por archivo</small>
                     </div>
 
+                    <!-- Dropzone mejorado -->
                     <div class="dropzone-uniagraria mb-3" id="dropzoneImportacion">
-                        <i class="fas fa-cloud-upload-alt"></i>
+                        <i class="fas fa-cloud-upload-alt fa-3x mb-3"></i>
                         <h5>Arrastra tu archivo aquí</h5>
                         <p class="text-muted">o haz clic para seleccionar</p>
+                        <p class="small text-muted mt-2">
+                            <i class="fas fa-check-circle text-success me-1"></i>
+                            Archivos permitidos: Excel (.xlsx, .xls) y CSV
+                        </p>
                     </div>
 
+                    <!-- Preview del archivo seleccionado -->
                     <div id="previewContainer" style="display: none;">
                         <hr>
                         <h6 class="text-success">
@@ -62,54 +68,91 @@
                                 <strong id="fileName"></strong>
                                 <br>
                                 <small id="fileSize" class="text-muted"></small>
+                                <br>
+                                <small id="fileType" class="text-muted"></small>
                             </div>
                             <button class="btn btn-sm btn-danger" onclick="resetUpload()">
                                 <i class="fas fa-times"></i>
                             </button>
                         </div>
+                        
+                        <!-- Vista previa de columnas -->
+                        <div id="previewColumns" class="mt-3 p-3 bg-light rounded" style="display: none;">
+                            <h6 class="text-success">
+                                <i class="fas fa-columns me-2"></i>
+                                Columnas detectadas:
+                            </h6>
+                            <div id="columnsList" class="d-flex flex-wrap gap-2"></div>
+                        </div>
                     </div>
 
+                    <!-- Barra de progreso -->
                     <div id="progressContainer" style="display: none;" class="mt-3">
                         <div class="d-flex justify-content-between mb-1">
-                            <span>Procesando...</span>
+                            <span>Procesando archivo...</span>
                             <span id="progressPercent">0%</span>
                         </div>
                         <div class="progress-uniagraria">
                             <div id="progressBar" class="progress-bar-uniagraria" style="width: 0%;"></div>
                         </div>
+                        <div id="progressDetail" class="small text-muted mt-2 text-center">
+                            Iniciando importación...
+                        </div>
                     </div>
 
+                    <!-- Botón de importación -->
                     <button class="btn btn-uniagraria w-100 mt-3" id="btnImportar" onclick="importarArchivo()" disabled>
                         <i class="fas fa-play me-2"></i>
                         Iniciar Importación
                     </button>
+
+                    <!-- Mensajes de resultado -->
+                    <div id="resultadoImportacion" class="mt-3" style="display: none;"></div>
                 </div>
             </div>
 
-            <!-- Plantilla de ejemplo -->
+            <!-- Plantillas de ejemplo -->
             <div class="card card-uniagraria mt-4 animate-slide-in" style="animation-delay: 0.2s;">
                 <div class="card-body">
                     <h6 class="text-success">
                         <i class="fas fa-download me-2"></i>
-                        Plantilla de ejemplo
+                        Plantillas de ejemplo
                     </h6>
                     <p class="small text-muted">
                         Descarga la plantilla para asegurar el formato correcto de los datos.
+                        Las columnas deben coincidir exactamente con estos nombres.
                     </p>
                     <div class="row">
                         <div class="col-6">
                             <a href="{{ url_for('static', filename='plantillas/plantilla_recoleccion.xlsx') }}" 
-                               class="btn btn-outline-uniagraria w-100">
+                               class="btn btn-outline-uniagraria w-100" download>
                                 <i class="fas fa-file-excel me-2"></i>
-                                Excel
+                                Excel (.xlsx)
                             </a>
                         </div>
                         <div class="col-6">
                             <a href="{{ url_for('static', filename='plantillas/plantilla_recoleccion.csv') }}" 
-                               class="btn btn-outline-uniagraria w-100">
+                               class="btn btn-outline-uniagraria w-100" download>
                                 <i class="fas fa-file-csv me-2"></i>
                                 CSV
                             </a>
+                        </div>
+                    </div>
+                    
+                    <!-- Lista de columnas requeridas -->
+                    <div class="mt-3">
+                        <p class="small text-muted mb-1">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Columnas requeridas:
+                        </p>
+                        <div class="d-flex flex-wrap gap-2">
+                            <span class="badge bg-light text-dark">Municipio</span>
+                            <span class="badge bg-light text-dark">Instalacion_Educativa</span>
+                            <span class="badge bg-light text-dark">Realizador_Nombre</span>
+                            <span class="badge bg-light text-dark">Realizador_Apellidos</span>
+                            <span class="badge bg-light text-dark">Grado</span>
+                            <span class="badge bg-light text-dark">Programa_Interes</span>
+                            <span class="badge bg-light text-dark">Jornada_Interes</span>
                         </div>
                     </div>
                 </div>
@@ -119,15 +162,16 @@
         <!-- Historial de Importaciones -->
         <div class="col-md-7 mb-4">
             <div class="card card-uniagraria animate-slide-in" style="animation-delay: 0.3s;">
-                <div class="card-header-uniagraria">
+                <div class="card-header-uniagraria d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">
                         <i class="fas fa-history me-2"></i>
                         Historial de Importaciones
                     </h5>
+                    <span class="badge bg-light text-dark">{{ importaciones|length }} importaciones</span>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table class="table table-hover datatable" id="tablaImportaciones">
+                        <table class="table table-hover" id="tablaImportaciones">
                             <thead>
                                 <tr>
                                     <th>Archivo</th>
@@ -135,6 +179,7 @@
                                     <th>Usuario</th>
                                     <th>Fecha</th>
                                     <th>Estado</th>
+                                    <th>Detalles</th>
                                     <th>Acciones</th>
                                 </tr>
                             </thead>
@@ -155,29 +200,99 @@
                                     <td>
                                         {% if imp.estado == 'completado' %}
                                         <span class="badge bg-success">Completado</span>
+                                        {% elif imp.estado == 'procesando' %}
+                                        <span class="badge bg-info">Procesando</span>
+                                        {% elif imp.estado == 'error' %}
+                                        <span class="badge bg-danger">Error</span>
                                         {% else %}
                                         <span class="badge bg-warning text-dark">{{ imp.estado }}</span>
                                         {% endif %}
                                     </td>
                                     <td>
+                                        <button class="btn btn-sm btn-outline-info" onclick="verDetallesImportacion({{ imp.id }})">
+                                            <i class="fas fa-info-circle"></i>
+                                        </button>
+                                    </td>
+                                    <td>
+                                        {% if imp.url %}
                                         <a href="{{ imp.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
                                             <i class="fas fa-download"></i>
                                         </a>
+                                        {% else %}
+                                        <span class="text-muted">N/A</span>
+                                        {% endif %}
                                     </td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
                         </table>
                         
-                        <!-- Mensaje cuando no hay datos (fuera de la tabla) -->
                         {% if not importaciones %}
-                        <div class="text-center py-4">
-                            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
-                            <p class="text-muted">No hay importaciones registradas</p>
+                        <div class="text-center py-5">
+                            <i class="fas fa-inbox fa-4x text-muted mb-3"></i>
+                            <h5 class="text-muted">No hay importaciones registradas</h5>
+                            <p class="text-muted small">Las importaciones que realices aparecerán aquí</p>
                         </div>
                         {% endif %}
                     </div>
                 </div>
+            </div>
+            
+            <!-- Estadísticas de importación -->
+            {% if importaciones %}
+            <div class="card card-uniagraria mt-4 animate-slide-in" style="animation-delay: 0.4s;">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 text-center">
+                            <h3 class="text-success">{{ importaciones|sum(attribute='registros_procesados') }}</h3>
+                            <p class="text-muted small">Total registros importados</p>
+                        </div>
+                        <div class="col-md-4 text-center">
+                            <h3 class="text-success">{{ importaciones|selectattr('estado', 'equalto', 'completado')|list|length }}</h3>
+                            <p class="text-muted small">Importaciones exitosas</p>
+                        </div>
+                        <div class="col-md-4 text-center">
+                            <h3 class="text-success">{{ importaciones|length }}</h3>
+                            <p class="text-muted small">Total archivos</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal Detalles de Importación -->
+<div class="modal fade" id="detalleImportacionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Detalles de Importación
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="detalleImportacionCargando" class="text-center py-3">
+                    <i class="fas fa-spinner fa-spin fa-2x text-info"></i>
+                    <p class="mt-2">Cargando detalles...</p>
+                </div>
+                <div id="detalleImportacionContenido" style="display: none;">
+                    <p><strong>Archivo:</strong> <span id="det_archivo"></span></p>
+                    <p><strong>Fecha:</strong> <span id="det_fecha"></span></p>
+                    <p><strong>Usuario:</strong> <span id="det_usuario"></span></p>
+                    <p><strong>Registros procesados:</strong> <span id="det_registros"></span></p>
+                    <p><strong>Estado:</strong> <span id="det_estado"></span></p>
+                    
+                    <hr>
+                    <h6>Metadata adicional:</h6>
+                    <pre id="det_metadata" class="bg-light p-2 rounded small" style="max-height: 200px; overflow-y: auto;"></pre>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
             </div>
         </div>
     </div>
@@ -191,6 +306,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Inicializar Dropzone
     const dropzone = document.getElementById('dropzoneImportacion');
     
+    // Eventos de drag & drop
     dropzone.addEventListener('click', function() {
         const input = document.createElement('input');
         input.type = 'file';
@@ -206,24 +322,30 @@ document.addEventListener('DOMContentLoaded', function() {
         e.preventDefault();
         dropzone.style.background = 'rgba(76, 175, 80, 0.15)';
         dropzone.style.borderColor = 'var(--verde-oscuro)';
+        dropzone.style.transform = 'scale(1.02)';
     });
     
     dropzone.addEventListener('dragleave', function(e) {
         e.preventDefault();
         dropzone.style.background = 'rgba(76, 175, 80, 0.05)';
         dropzone.style.borderColor = 'var(--verde-claro)';
+        dropzone.style.transform = 'scale(1)';
     });
     
     dropzone.addEventListener('drop', function(e) {
         e.preventDefault();
         dropzone.style.background = 'rgba(76, 175, 80, 0.05)';
         dropzone.style.borderColor = 'var(--verde-claro)';
+        dropzone.style.transform = 'scale(1)';
         
-        archivoSeleccionado = e.dataTransfer.files[0];
-        mostrarPreview(archivoSeleccionado);
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            archivoSeleccionado = files[0];
+            mostrarPreview(archivoSeleccionado);
+        }
     });
     
-    // Inicializar DataTable SOLO si hay datos
+    // Inicializar DataTable si hay datos
     const tabla = document.getElementById('tablaImportaciones');
     if (tabla && tabla.querySelector('tbody tr')) {
         dataTable = $('#tablaImportaciones').DataTable({
@@ -234,20 +356,9 @@ document.addEventListener('DOMContentLoaded', function() {
             pageLength: 10,
             order: [[3, 'desc']],
             columnDefs: [
-                { orderable: false, targets: 5 } // Columna de acciones no ordenable
-            ],
-            // Configuración para manejar correctamente cuando no hay datos
-            initComplete: function(settings, json) {
-                console.log('DataTable inicializado correctamente');
-            }
+                { orderable: false, targets: [5, 6] }
+            ]
         });
-    } else {
-        console.log('No hay datos para inicializar DataTable');
-        // Opcional: Mostrar mensaje de que no hay datos
-        const container = document.querySelector('.table-responsive');
-        if (container && !document.querySelector('#tablaImportaciones tbody tr')) {
-            // Ya mostramos el mensaje fuera de la tabla
-        }
     }
 });
 
@@ -256,17 +367,50 @@ function mostrarPreview(archivo) {
     
     document.getElementById('fileName').textContent = archivo.name;
     document.getElementById('fileSize').textContent = formatBytes(archivo.size);
+    document.getElementById('fileType').textContent = `Tipo: ${archivo.type || 'Desconocido'}`;
     document.getElementById('previewContainer').style.display = 'block';
     document.getElementById('dropzoneImportacion').style.display = 'none';
     document.getElementById('btnImportar').disabled = false;
+    
+    // Intentar leer columnas del archivo (solo para preview)
+    if (archivo.name.endsWith('.csv')) {
+        leerColumnasCSV(archivo);
+    }
+}
+
+function leerColumnasCSV(archivo) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const contenido = e.target.result;
+        const primeraLinea = contenido.split('\n')[0];
+        if (primeraLinea) {
+            const columnas = primeraLinea.split(',').map(col => col.trim());
+            mostrarColumnas(columnas);
+        }
+    };
+    reader.readAsText(archivo.slice(0, 1024)); // Leer solo los primeros 1KB
+}
+
+function mostrarColumnas(columnas) {
+    const container = document.getElementById('columnsList');
+    container.innerHTML = '';
+    columnas.forEach(col => {
+        const badge = document.createElement('span');
+        badge.className = 'badge bg-secondary';
+        badge.textContent = col;
+        container.appendChild(badge);
+    });
+    document.getElementById('previewColumns').style.display = 'block';
 }
 
 function resetUpload() {
     archivoSeleccionado = null;
     document.getElementById('previewContainer').style.display = 'none';
+    document.getElementById('previewColumns').style.display = 'none';
     document.getElementById('dropzoneImportacion').style.display = 'block';
     document.getElementById('btnImportar').disabled = true;
     document.getElementById('progressContainer').style.display = 'none';
+    document.getElementById('resultadoImportacion').style.display = 'none';
     document.getElementById('progressBar').style.width = '0%';
     document.getElementById('progressPercent').textContent = '0%';
 }
@@ -286,11 +430,29 @@ function importarArchivo() {
         return;
     }
     
+    // Validar tamaño
+    if (archivoSeleccionado.size > 500 * 1024 * 1024) {
+        toastr.error('El archivo excede el tamaño máximo de 500MB');
+        return;
+    }
+    
     const formData = new FormData();
     formData.append('file', archivoSeleccionado);
     
+    // Mostrar progreso
     document.getElementById('progressContainer').style.display = 'block';
     document.getElementById('btnImportar').disabled = true;
+    document.getElementById('resultadoImportacion').style.display = 'none';
+    
+    let progress = 0;
+    const interval = setInterval(() => {
+        progress += 5;
+        if (progress <= 90) {
+            document.getElementById('progressBar').style.width = progress + '%';
+            document.getElementById('progressPercent').textContent = progress + '%';
+            document.getElementById('progressDetail').textContent = `Procesando registros... ${progress}%`;
+        }
+    }, 200);
     
     fetch('/api/importacion/excel', {
         method: 'POST',
@@ -301,35 +463,98 @@ function importarArchivo() {
     })
     .then(response => response.json())
     .then(data => {
+        clearInterval(interval);
+        
         if (data.error) {
+            document.getElementById('progressBar').style.width = '100%';
+            document.getElementById('progressBar').classList.add('bg-danger');
+            document.getElementById('progressPercent').textContent = 'Error';
+            document.getElementById('progressDetail').textContent = data.error;
+            
             toastr.error(data.error);
-            document.getElementById('btnImportar').disabled = false;
-            document.getElementById('progressContainer').style.display = 'none';
+            
+            setTimeout(() => {
+                resetUpload();
+            }, 3000);
         } else {
+            document.getElementById('progressBar').style.width = '100%';
+            document.getElementById('progressPercent').textContent = '100%';
+            document.getElementById('progressDetail').textContent = '¡Importación completada!';
+            
+            // Mostrar resultado
+            const resultado = document.getElementById('resultadoImportacion');
+            resultado.style.display = 'block';
+            resultado.className = 'alert alert-success mt-3';
+            
+            let mensaje = `
+                <strong>✅ ¡Importación exitosa!</strong><br>
+                <i class="fas fa-check-circle me-1"></i> ${data.registros_procesados} registros procesados<br>
+            `;
+            
+            if (data.errores > 0) {
+                mensaje += `<i class="fas fa-exclamation-triangle me-1"></i> ${data.errores} errores encontrados<br>`;
+                if (data.detalles_errores && data.detalles_errores.length > 0) {
+                    mensaje += '<div class="small mt-2">Primeros errores:<ul>';
+                    data.detalles_errores.slice(0, 3).forEach(err => {
+                        mensaje += `<li>Fila ${err.fila}: ${err.error}</li>`;
+                    });
+                    mensaje += '</ul></div>';
+                }
+            }
+            
+            resultado.innerHTML = mensaje;
             toastr.success(data.message);
             
-            // Simular progreso
-            let progress = 0;
-            const interval = setInterval(() => {
-                progress += 2;
-                document.getElementById('progressBar').style.width = progress + '%';
-                document.getElementById('progressPercent').textContent = progress + '%';
-                
-                if (progress >= 100) {
-                    clearInterval(interval);
-                    setTimeout(() => {
-                        location.reload();
-                    }, 1000);
-                }
-            }, 50);
+            setTimeout(() => {
+                location.reload();
+            }, 3000);
         }
     })
     .catch(error => {
+        clearInterval(interval);
         console.error('Error:', error);
+        
+        document.getElementById('progressBar').style.width = '100%';
+        document.getElementById('progressBar').classList.add('bg-danger');
+        document.getElementById('progressPercent').textContent = 'Error';
+        document.getElementById('progressDetail').textContent = 'Error en la importación';
+        
         toastr.error('Error al importar el archivo: ' + error.message);
-        document.getElementById('btnImportar').disabled = false;
-        document.getElementById('progressContainer').style.display = 'none';
+        
+        setTimeout(() => {
+            resetUpload();
+        }, 3000);
     });
+}
+
+function verDetallesImportacion(id) {
+    const modal = new bootstrap.Modal(document.getElementById('detalleImportacionModal'));
+    modal.show();
+    
+    document.getElementById('detalleImportacionCargando').style.display = 'block';
+    document.getElementById('detalleImportacionContenido').style.display = 'none';
+    
+    // Buscar en la tabla de importaciones
+    fetch(`/api/importacion/detalles/${id}`)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('det_archivo').textContent = data.nombre_archivo;
+            document.getElementById('det_fecha').textContent = new Date(data.fecha_importacion).toLocaleString();
+            document.getElementById('det_usuario').textContent = data.usuario || 'N/A';
+            document.getElementById('det_registros').textContent = data.registros_procesados;
+            document.getElementById('det_estado').innerHTML = `<span class="badge bg-success">${data.estado}</span>`;
+            document.getElementById('det_metadata').textContent = JSON.stringify(data.datos_metadata, null, 2);
+            
+            document.getElementById('detalleImportacionCargando').style.display = 'none';
+            document.getElementById('detalleImportacionContenido').style.display = 'block';
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('detalleImportacionCargando').innerHTML = `
+                <i class="fas fa-exclamation-circle fa-2x text-danger mb-2"></i>
+                <p class="text-danger">Error al cargar detalles</p>
+            `;
+        });
 }
 
 // Función para recargar la tabla después de importar
@@ -341,4 +566,63 @@ function recargarTabla() {
     }
 }
 </script>
+
+<style>
+.dropzone-uniagraria {
+    border: 3px dashed var(--verde-claro);
+    border-radius: 20px;
+    padding: 40px 20px;
+    text-align: center;
+    background: rgba(76, 175, 80, 0.05);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.dropzone-uniagraria:hover {
+    background: rgba(76, 175, 80, 0.15);
+    border-color: var(--verde-oscuro);
+    transform: scale(1.02);
+}
+
+.dropzone-uniagraria i {
+    font-size: 4rem;
+    color: var(--verde-uniagraria);
+    margin-bottom: 15px;
+}
+
+.progress-uniagraria {
+    height: 25px;
+    background-color: #e9ecef;
+    border-radius: 15px;
+    overflow: hidden;
+}
+
+.progress-bar-uniagraria {
+    height: 100%;
+    background: linear-gradient(90deg, var(--verde-uniagraria), var(--verde-claro));
+    border-radius: 15px;
+    transition: width 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+#previewColumns {
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+</style>
 {% endblock %}
