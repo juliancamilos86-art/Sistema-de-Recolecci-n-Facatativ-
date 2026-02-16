@@ -1,6 +1,7 @@
 """
 UNIAGRARIA - SISTEMA DE RECOLECCIÓN FACATATIVÁ 2026
 Julian Camilo Quintero Martinez
+VERSIÓN CORREGIDA - TODAS LAS RELACIONES FUNCIONANDO
 """
 
 import os
@@ -120,8 +121,8 @@ os.makedirs('static/plantillas', exist_ok=True)
 # CONFIGURACIÓN CLOUDINARY - CORREGIDA
 # ==============================================
 CLOUDINARY_CLOUD_NAME = 'dcplwmqpp'
-CLOUDINARY_API_KEY = '315877441477912'  # <--- ESTE ES EL CORRECTO
-CLOUDINARY_API_SECRET = '_VMLEqXJBVYD70HzVfNOBaRWYjE'  # <--- ESTE ES EL CORRECTO
+CLOUDINARY_API_KEY = '315877441477912'
+CLOUDINARY_API_SECRET = '_VMLEqXJBVYD70HzVfNOBaRWYjE'
 
 print("=" * 50)
 print("🔵 CONFIGURACIÓN CLOUDINARY - VALORES ACTUALIZADOS")
@@ -169,7 +170,7 @@ limiter = Limiter(
 )
 
 # ============================================================================
-# MODELOS DE BASE DE DATOS
+# MODELOS DE BASE DE DATOS - TODOS CORREGIDOS
 # ============================================================================
 
 class Usuario(UserMixin, db.Model):
@@ -187,9 +188,9 @@ class Usuario(UserMixin, db.Model):
     ultimo_acceso = db.Column(db.DateTime)
     fecha_registro = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # RELACIONES CORREGIDAS
+    # RELACIONES CORREGIDAS - TODAS CON back_populates
     registros = db.relationship('RecoleccionDato', back_populates='usuario_registro', lazy=True)
-    imagenes_subidas = db.relationship('FeriaImagen', back_populates='usuario_subida', lazy=True)  # ¡DEBE coincidir!
+    imagenes_subidas = db.relationship('FeriaImagen', back_populates='usuario_subida', lazy=True)
     importaciones = db.relationship('ArchivoImportado', back_populates='usuario_importo', lazy=True)
     
     def is_admin(self):
@@ -217,7 +218,7 @@ class Municipio(db.Model):
     departamento = db.Column(db.String(100), default='Cundinamarca')
     activo = db.Column(db.Boolean, default=True)
     
-    # RELACIÓN CORREGIDA - usa back_populates en lugar de backref
+    # RELACIONES CORREGIDAS
     instituciones = db.relationship('Institucion', back_populates='municipio', lazy=True)
     registros = db.relationship('RecoleccionDato', back_populates='municipio', lazy=True)
     
@@ -240,7 +241,7 @@ class Institucion(db.Model):
     contacto = db.Column(db.String(255))
     activo = db.Column(db.Boolean, default=True)
     
-    # RELACIÓN CORREGIDA - usa back_populates en lugar de backref
+    # RELACIONES CORREGIDAS
     municipio = db.relationship('Municipio', back_populates='instituciones')
     registros = db.relationship('RecoleccionDato', back_populates='institucion', lazy=True)
     
@@ -256,7 +257,6 @@ class Institucion(db.Model):
             'activo': self.activo
         }
 
-        
 class RecoleccionDato(db.Model):
     """Modelo principal para la recolección de datos"""
     __tablename__ = 'recoleccion_datos'
@@ -362,7 +362,7 @@ class FeriaImagen(db.Model):
     
     # RELACIONES CORREGIDAS
     feria = db.relationship('Feria', back_populates='imagenes')
-    usuario_subida = db.relationship('Usuario', back_populates='imagenes_subidas')  # ¡DEBE coincidir!
+    usuario_subida = db.relationship('Usuario', back_populates='imagenes_subidas')
     
     def to_dict(self):
         return {
@@ -388,6 +388,22 @@ class ArchivoImportado(db.Model):
     registros_procesados = db.Column(db.Integer, default=0)
     estado = db.Column(db.String(50), default='completado')
     datos_metadata = db.Column(db.JSON, default={})
+    
+    # RELACIÓN CORREGIDA - ¡ESTA ES LA QUE FALTABA!
+    usuario_importo = db.relationship('Usuario', back_populates='importaciones')
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'nombre_archivo': self.nombre_archivo,
+            'tipo': self.tipo,
+            'url': self.url,
+            'usuario': self.usuario_importo.nombre if self.usuario_importo else None,
+            'fecha_importacion': self.fecha_importacion.isoformat() if self.fecha_importacion else None,
+            'registros_procesados': self.registros_procesados,
+            'estado': self.estado,
+            'datos_metadata': self.datos_metadata
+        }
 
 # ============================================================================
 # FUNCIONES AUXILIARES
@@ -594,7 +610,7 @@ def dashboard():
         return render_template('dashboard.html', usuario=current_user, now=datetime.now)
 
 # ============================================================================
-# RUTAS DE RECOLECCIÓN DE DATOS - CORREGIDAS
+# RUTAS DE RECOLECCIÓN DE DATOS
 # ============================================================================
 
 @app.route('/recoleccion')
@@ -627,7 +643,7 @@ def recoleccion():
 @app.route('/api/recoleccion', methods=['POST'])
 @login_required
 def api_crear_recoleccion():
-    """API para crear nuevo registro de recolección - CORREGIDA"""
+    """API para crear nuevo registro de recolección"""
     try:
         data = request.get_json()
         
@@ -637,7 +653,7 @@ def api_crear_recoleccion():
                 return jsonify({'error': 'Email inválido'}), 400
             data['correo'] = email_validado
         
-        # CORRECCIÓN: Manejar valores vacíos para campos enteros
+        # Manejar valores vacíos para campos enteros
         municipio_id = data.get('municipio_id')
         if municipio_id == '' or municipio_id is None:
             municipio_id = None
@@ -711,7 +727,7 @@ def api_obtener_recoleccion(id):
                 return jsonify({'error': 'Email inválido'}), 400
             data['correo'] = email_validado
         
-        # CORRECCIÓN: Manejar valores vacíos para campos enteros en actualización
+        # Manejar valores vacíos para campos enteros en actualización
         if 'municipio_id' in data:
             if data['municipio_id'] == '' or data['municipio_id'] is None:
                 data['municipio_id'] = None
@@ -811,7 +827,7 @@ def api_crear_feria():
 @app.route('/api/ferias/<int:feria_id>/imagenes', methods=['POST'])
 @login_required
 def api_subir_imagen_feria(feria_id):
-    """Subir imágenes de feria a Cloudinary o local - VERSIÓN CORREGIDA"""
+    """Subir imágenes de feria a Cloudinary o local"""
     try:
         feria = Feria.query.get_or_404(feria_id)
         
@@ -869,7 +885,7 @@ def api_subir_imagen_feria(feria_id):
                     )
                     
                     db.session.add(imagen)
-                    db.session.flush()  # Forzar la asignación de ID
+                    db.session.flush()
                     print(f"📝 Registro creado en BD con ID: {imagen.id}")
                     
                     imagenes_subidas.append({
@@ -922,7 +938,7 @@ def api_subir_imagen_feria(feria_id):
 @app.route('/api/ferias/<int:feria_id>/imagenes', methods=['GET'])
 @login_required
 def api_obtener_imagenes_feria(feria_id):
-    """Obtener imágenes de una feria - VERSIÓN VERIFICADA"""
+    """Obtener imágenes de una feria"""
     try:
         # Verificar que la feria existe
         feria = Feria.query.get_or_404(feria_id)
@@ -943,6 +959,7 @@ def api_obtener_imagenes_feria(feria_id):
         app.logger.error(f"Error al obtener imágenes: {str(e)}")
         print(f"❌ Error en GET: {str(e)}")
         return jsonify({'error': 'Error al obtener imágenes', 'detalle': str(e)}), 500
+
 @app.route('/api/ferias/imagenes/<path:public_id>', methods=['DELETE'])
 @login_required
 def api_eliminar_imagen(public_id):
@@ -1429,7 +1446,7 @@ def api_detalles_importacion(id):
     try:
         importacion = ArchivoImportado.query.get_or_404(id)
         
-        # Obtener nombre del usuario
+        # Obtener nombre del usuario - AHORA SÍ FUNCIONA PORQUE LA RELACIÓN EXISTE
         usuario_nombre = importacion.usuario_importo.nombre if importacion.usuario_importo else None
         
         return jsonify({
@@ -1447,6 +1464,7 @@ def api_detalles_importacion(id):
     except Exception as e:
         app.logger.error(f"Error al obtener detalles de importación: {str(e)}")
         return jsonify({'error': 'Error al obtener detalles'}), 500
+
 # ============================================================================
 # MANEJO DE ERRORES
 # ============================================================================
