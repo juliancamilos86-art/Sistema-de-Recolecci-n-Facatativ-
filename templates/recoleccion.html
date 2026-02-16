@@ -275,6 +275,151 @@
     </div>
 </div>
 
+<!-- Modal Editar Registro -->
+<div class="modal fade" id="editarRegistroModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-edit me-2"></i>
+                    Editar Registro de Recolección
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="editarCargando" class="text-center py-4">
+                    <i class="fas fa-spinner fa-spin fa-3x text-primary"></i>
+                    <p class="mt-2">Cargando datos del registro...</p>
+                </div>
+                
+                <form id="formEditar" style="display: none;">
+                    <input type="hidden" name="id" id="edit_id">
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Ficha de toma de registro</label>
+                            <input type="text" class="form-control" name="ficha_toma_registro" id="edit_ficha_toma_registro">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Asesor</label>
+                            <input type="text" class="form-control" name="asesor" id="edit_asesor">
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold text-success">Municipio *</label>
+                            <select class="form-select select2" name="municipio_id" id="edit_municipio_id" required>
+                                <option value="">Seleccione un municipio</option>
+                                {% for m in municipios %}
+                                <option value="{{ m.id }}">{{ m.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold text-success">Institución Educativa</label>
+                            <select class="form-select select2" name="institucion_id" id="edit_institucion_id">
+                                <option value="">Seleccione una institución (opcional)</option>
+                                {% for i in instituciones %}
+                                <option value="{{ i.id }}">{{ i.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Nombres del realizador</label>
+                            <input type="text" class="form-control" name="realizador_nombre" id="edit_realizador_nombre">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Apellidos del realizador</label>
+                            <input type="text" class="form-control" name="realizador_apellidos" id="edit_realizador_apellidos">
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">Matrícula/Documento</label>
+                            <input type="text" class="form-control" name="matricula_documento" id="edit_matricula_documento">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">Teléfono</label>
+                            <input type="tel" class="form-control" name="telefono" id="edit_telefono">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">Correo</label>
+                            <input type="email" class="form-control" name="correo" id="edit_correo">
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">Grado</label>
+                            <select class="form-select" name="grado" id="edit_grado">
+                                <option value="">Seleccione</option>
+                                <option value="9°">9°</option>
+                                <option value="10°">10°</option>
+                                <option value="11°">11°</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">Programa de interés</label>
+                            <select class="form-select" name="programa_interes" id="edit_programa_interes">
+                                <option value="">Seleccione</option>
+                                <option value="Ingeniería Agronómica">Ingeniería Agronómica</option>
+                                <option value="Medicina Veterinaria">Medicina Veterinaria</option>
+                                <option value="Zootecnia">Zootecnia</option>
+                                <option value="Administración de Empresas">Administración de Empresas</option>
+                                <option value="Contaduría Pública">Contaduría Pública</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">Jornada de interés</label>
+                            <select class="form-select" name="jornada_interes" id="edit_jornada_interes">
+                                <option value="">Seleccione</option>
+                                <option value="Diurna">Diurna</option>
+                                <option value="Nocturna">Nocturna</option>
+                                <option value="Sabatina">Sabatina</option>
+                                <option value="Virtual">Virtual</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label class="form-label fw-bold">Observaciones</label>
+                            <textarea class="form-control" name="observacion" id="edit_observacion" rows="3"></textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Estado</label>
+                            <select class="form-select" name="estado" id="edit_estado">
+                                <option value="pendiente">Pendiente</option>
+                                <option value="completado">Completado</option>
+                                <option value="procesando">Procesando</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Año/Periodo</label>
+                            <input type="text" class="form-control" name="ano_periodo" id="edit_ano_periodo" value="2026-1" readonly>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="actualizarRegistro()">
+                    <i class="fas fa-save me-2"></i>
+                    Actualizar Registro
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Modal Ver Detalle -->
 <div class="modal fade" id="detalleModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
@@ -410,9 +555,16 @@ $(document).ready(function() {
             ]
         });
     }
+    
+    // Inicializar Select2
+    $('.select2').select2({
+        theme: 'bootstrap-5',
+        width: '100%',
+        dropdownParent: $('#editarRegistroModal')
+    });
 });
 
-// Guardar registro
+// Guardar registro (CREAR)
 function guardarRegistro() {
     const form = document.getElementById('formRegistro');
     const formData = new FormData(form);
@@ -424,7 +576,7 @@ function guardarRegistro() {
         return;
     }
     
-    console.log('Enviando datos:', data);
+    console.log('Creando registro:', data);
     
     fetch('/api/recoleccion', {
         method: 'POST',
@@ -445,9 +597,7 @@ function guardarRegistro() {
             toastr.error(data.error);
         } else {
             toastr.success('Registro creado exitosamente');
-            // Cerrar modal
             bootstrap.Modal.getInstance(document.getElementById('nuevoRegistroModal')).hide();
-            // Recargar después de 1.5 segundos
             setTimeout(() => location.reload(), 1500);
         }
     })
@@ -457,19 +607,121 @@ function guardarRegistro() {
     });
 }
 
+// Editar registro (CARGAR DATOS EN MODAL)
+function editarRegistro(id) {
+    registroActualId = id;
+    
+    // Mostrar modal de edición con loading
+    document.getElementById('editarCargando').style.display = 'block';
+    document.getElementById('formEditar').style.display = 'none';
+    
+    const modal = new bootstrap.Modal(document.getElementById('editarRegistroModal'));
+    modal.show();
+    
+    // Cargar datos del registro
+    fetch(`/api/recoleccion/${id}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Error al cargar los datos');
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Datos cargados para editar:', data);
+            
+            // Llenar formulario
+            document.getElementById('edit_id').value = data.id || '';
+            document.getElementById('edit_ficha_toma_registro').value = data.ficha || '';
+            document.getElementById('edit_asesor').value = data.asesor || '';
+            document.getElementById('edit_municipio_id').value = data.municipio_id || '';
+            document.getElementById('edit_institucion_id').value = data.institucion_id || '';
+            document.getElementById('edit_realizador_nombre').value = data.nombre || '';
+            document.getElementById('edit_realizador_apellidos').value = data.apellidos || '';
+            document.getElementById('edit_matricula_documento').value = data.matricula || '';
+            document.getElementById('edit_telefono').value = data.telefono || '';
+            document.getElementById('edit_correo').value = data.correo || '';
+            document.getElementById('edit_grado').value = data.grado || '';
+            document.getElementById('edit_programa_interes').value = data.programa || '';
+            document.getElementById('edit_jornada_interes').value = data.jornada || '';
+            document.getElementById('edit_observacion').value = data.observacion || '';
+            document.getElementById('edit_estado').value = data.estado || 'pendiente';
+            document.getElementById('edit_ano_periodo').value = data.periodo || '2026-1';
+            
+            // Actualizar Select2
+            $('#edit_municipio_id').trigger('change');
+            $('#edit_institucion_id').trigger('change');
+            
+            // Ocultar loading y mostrar formulario
+            document.getElementById('editarCargando').style.display = 'none';
+            document.getElementById('formEditar').style.display = 'block';
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('editarCargando').innerHTML = `
+                <i class="fas fa-exclamation-circle fa-3x text-danger mb-3"></i>
+                <p class="text-danger">Error al cargar los datos</p>
+                <p class="text-muted small">${error.message}</p>
+                <button class="btn btn-sm btn-primary mt-3" onclick="editarRegistro(${id})">
+                    <i class="fas fa-redo me-2"></i>Reintentar
+                </button>
+            `;
+        });
+}
+
+// Actualizar registro (GUARDAR CAMBIOS)
+function actualizarRegistro() {
+    const form = document.getElementById('formEditar');
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+    const id = data.id;
+    
+    // Validar campos requeridos
+    if (!data.municipio_id) {
+        toastr.warning('Por favor seleccione un municipio');
+        return;
+    }
+    
+    console.log('Actualizando registro:', id, data);
+    
+    fetch(`/api/recoleccion/${id}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(err => { throw err; });
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.error) {
+            toastr.error(data.error);
+        } else {
+            toastr.success('Registro actualizado exitosamente');
+            bootstrap.Modal.getInstance(document.getElementById('editarRegistroModal')).hide();
+            setTimeout(() => location.reload(), 1500);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        toastr.error(error.error || 'Error al actualizar el registro');
+    });
+}
+
 // Ver detalle del registro
 function verDetalle(id) {
     registroActualId = id;
     
-    // Mostrar loading y ocultar contenido
     document.getElementById('detalleCargando').style.display = 'block';
     document.getElementById('detalleContenido').style.display = 'none';
     
-    // Abrir modal
     const modal = new bootstrap.Modal(document.getElementById('detalleModal'));
     modal.show();
     
-    // Cargar datos
     fetch(`/api/recoleccion/${id}`)
         .then(response => {
             if (!response.ok) {
@@ -478,9 +730,8 @@ function verDetalle(id) {
             return response.json();
         })
         .then(data => {
-            console.log('Datos cargados:', data);
+            console.log('Detalles cargados:', data);
             
-            // Llenar campos
             document.getElementById('detalle_id').textContent = data.id || 'N/A';
             document.getElementById('detalle_ficha').textContent = data.ficha || 'N/A';
             document.getElementById('detalle_asesor').textContent = data.asesor || 'N/A';
@@ -497,18 +748,15 @@ function verDetalle(id) {
             document.getElementById('detalle_jornada').textContent = data.jornada || 'N/A';
             document.getElementById('detalle_observacion').textContent = data.observacion || 'Sin observaciones';
             
-            // Estado con badge de color
-            const estadoSpan = document.getElementById('detalle_estado');
             const estado = data.estado || 'pendiente';
             let badgeClass = 'badge bg-warning';
             if (estado === 'completado') badgeClass = 'badge bg-success';
             else if (estado === 'procesando') badgeClass = 'badge bg-info';
-            estadoSpan.innerHTML = `<span class="${badgeClass}">${estado}</span>`;
+            document.getElementById('detalle_estado').innerHTML = `<span class="${badgeClass}">${estado}</span>`;
             
             document.getElementById('detalle_fecha').textContent = data.fecha ? new Date(data.fecha).toLocaleString() : 'N/A';
             document.getElementById('detalle_usuario').textContent = data.usuario || 'N/A';
             
-            // Ocultar loading y mostrar contenido
             document.getElementById('detalleCargando').style.display = 'none';
             document.getElementById('detalleContenido').style.display = 'block';
         })
@@ -518,36 +766,21 @@ function verDetalle(id) {
                 <i class="fas fa-exclamation-circle fa-3x text-danger mb-3"></i>
                 <p class="text-danger">Error al cargar los detalles</p>
                 <p class="text-muted small">${error.message}</p>
+                <button class="btn btn-sm btn-info mt-3" onclick="verDetalle(${id})">
+                    <i class="fas fa-redo me-2"></i>Reintentar
+                </button>
             `;
         });
 }
 
-// Editar registro (desde el botón de detalle)
+// Editar desde el modal de detalle
 function editarDesdeDetalle() {
     if (registroActualId) {
-        // Cerrar modal de detalle
         bootstrap.Modal.getInstance(document.getElementById('detalleModal')).hide();
-        // Abrir modal de edición (pendiente de implementar)
-        toastr.info('Función de edición en desarrollo');
+        setTimeout(() => {
+            editarRegistro(registroActualId);
+        }, 500);
     }
-}
-
-// Editar registro (desde el botón de la tabla)
-function editarRegistro(id) {
-    registroActualId = id;
-    toastr.info(`Cargando datos del registro #${id} para editar...`);
-    // Aquí iría la lógica para cargar los datos en el formulario de edición
-    // Por ahora solo mostramos mensaje
-    setTimeout(() => {
-        toastr.info('Función de edición completa en desarrollo');
-    }, 1000);
-}
-
-// Función auxiliar para formatear fechas
-function formatDate(dateString) {
-    if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
 }
 </script>
 {% endblock %}
