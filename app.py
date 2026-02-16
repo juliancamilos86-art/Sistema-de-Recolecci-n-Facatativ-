@@ -189,7 +189,7 @@ class Usuario(UserMixin, db.Model):
     
     # RELACIONES CORREGIDAS
     registros = db.relationship('RecoleccionDato', back_populates='usuario_registro', lazy=True)
-    imagenes_subidas = db.relationship('FeriaImagen', back_populates='usuario_subida', lazy=True)
+    imagenes_subidas = db.relationship('FeriaImagen', back_populates='usuario_subida', lazy=True)  # ¡DEBE coincidir!
     importaciones = db.relationship('ArchivoImportado', back_populates='usuario_importo', lazy=True)
     
     def is_admin(self):
@@ -330,7 +330,8 @@ class Feria(db.Model):
     descripcion = db.Column(db.Text)
     activa = db.Column(db.Boolean, default=True)
     
-    imagenes = db.relationship('FeriaImagen', backref='feria', lazy=True)
+    # RELACIONES CORREGIDAS
+    imagenes = db.relationship('FeriaImagen', back_populates='feria', lazy=True)
     municipio_rel = db.relationship('Municipio')
     
     def to_dict(self):
@@ -345,7 +346,7 @@ class Feria(db.Model):
             'descripcion': self.descripcion,
             'activa': self.activa,
             'total_imagenes': len(self.imagenes) if self.imagenes else 0
-        }
+        }}
 
 class FeriaImagen(db.Model):
     """Modelo de imágenes de ferias"""
@@ -358,6 +359,10 @@ class FeriaImagen(db.Model):
     descripcion = db.Column(db.Text)
     usuario_subida_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'))
     fecha_subida = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # RELACIONES CORREGIDAS
+    feria = db.relationship('Feria', back_populates='imagenes')
+    usuario_subida = db.relationship('Usuario', back_populates='imagenes_subidas')  # ¡DEBE coincidir!
     
     def to_dict(self):
         return {
