@@ -216,8 +216,9 @@ class Municipio(db.Model):
     departamento = db.Column(db.String(100), default='Cundinamarca')
     activo = db.Column(db.Boolean, default=True)
     
-    instituciones = db.relationship('Institucion', backref='municipio', lazy=True)
-    registros = db.relationship('RecoleccionDato', backref='municipio', lazy=True)
+    # RELACIÓN CORREGIDA - usa back_populates en lugar de backref
+    instituciones = db.relationship('Institucion', back_populates='municipio', lazy=True)
+    registros = db.relationship('RecoleccionDato', back_populates='municipio', lazy=True)
     
     def to_dict(self):
         return {
@@ -225,6 +226,7 @@ class Municipio(db.Model):
             'nombre': self.nombre,
             'departamento': self.departamento
         }
+}
 
 class Institucion(db.Model):
     """Modelo de instituciones educativas"""
@@ -238,9 +240,9 @@ class Institucion(db.Model):
     contacto = db.Column(db.String(255))
     activo = db.Column(db.Boolean, default=True)
     
-    # Relación correcta con Municipio
-    municipio = db.relationship('Municipio', backref='instituciones_list', lazy=True)
-    registros = db.relationship('RecoleccionDato', backref='institucion_rel', lazy=True)
+    # RELACIÓN CORREGIDA - usa back_populates en lugar de backref
+    municipio = db.relationship('Municipio', back_populates='instituciones')
+    registros = db.relationship('RecoleccionDato', back_populates='institucion', lazy=True)
     
     def to_dict(self):
         return {
@@ -253,6 +255,7 @@ class Institucion(db.Model):
             'contacto': self.contacto,
             'activo': self.activo
         }
+
         
 class RecoleccionDato(db.Model):
     """Modelo principal para la recolección de datos"""
@@ -281,6 +284,11 @@ class RecoleccionDato(db.Model):
     usuario_registro_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'))
     fecha_registro = db.Column(db.DateTime, default=datetime.utcnow)
     fecha_actualizacion = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # RELACIONES CORREGIDAS
+    municipio = db.relationship('Municipio', back_populates='registros')
+    institucion = db.relationship('Institucion', back_populates='registros')
+    usuario_registro = db.relationship('Usuario', back_populates='registros')
     
     def to_dict(self):
         return {
