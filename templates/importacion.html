@@ -127,7 +127,7 @@
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table class="table table-hover datatable">
+                        <table class="table table-hover datatable" id="tablaImportaciones">
                             <thead>
                                 <tr>
                                     <th>Archivo</th>
@@ -165,16 +165,17 @@
                                         </a>
                                     </td>
                                 </tr>
-                                {% else %}
-                                <tr>
-                                    <td colspan="6" class="text-center py-4">
-                                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
-                                        <p class="text-muted">No hay importaciones registradas</p>
-                                    </td>
-                                </tr>
                                 {% endfor %}
                             </tbody>
                         </table>
+                        
+                        <!-- Mensaje cuando no hay datos (fuera de la tabla) -->
+                        {% if not importaciones %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">No hay importaciones registradas</p>
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -184,6 +185,7 @@
 
 <script>
 let archivoSeleccionado = null;
+let dataTable = null;
 
 document.addEventListener('DOMContentLoaded', function() {
     // Inicializar Dropzone
@@ -221,16 +223,31 @@ document.addEventListener('DOMContentLoaded', function() {
         mostrarPreview(archivoSeleccionado);
     });
     
-    // Inicializar DataTable
-    if ($('.datatable').length) {
-        $('.datatable').DataTable({
+    // Inicializar DataTable SOLO si hay datos
+    const tabla = document.getElementById('tablaImportaciones');
+    if (tabla && tabla.querySelector('tbody tr')) {
+        dataTable = $('#tablaImportaciones').DataTable({
             responsive: true,
             language: {
                 url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
             },
             pageLength: 10,
-            order: [[3, 'desc']]
+            order: [[3, 'desc']],
+            columnDefs: [
+                { orderable: false, targets: 5 } // Columna de acciones no ordenable
+            ],
+            // Configuración para manejar correctamente cuando no hay datos
+            initComplete: function(settings, json) {
+                console.log('DataTable inicializado correctamente');
+            }
         });
+    } else {
+        console.log('No hay datos para inicializar DataTable');
+        // Opcional: Mostrar mensaje de que no hay datos
+        const container = document.querySelector('.table-responsive');
+        if (container && !document.querySelector('#tablaImportaciones tbody tr')) {
+            // Ya mostramos el mensaje fuera de la tabla
+        }
     }
 });
 
@@ -309,10 +326,19 @@ function importarArchivo() {
     })
     .catch(error => {
         console.error('Error:', error);
-        toastr.error('Error al importar el archivo');
+        toastr.error('Error al importar el archivo: ' + error.message);
         document.getElementById('btnImportar').disabled = false;
         document.getElementById('progressContainer').style.display = 'none';
     });
+}
+
+// Función para recargar la tabla después de importar
+function recargarTabla() {
+    if (dataTable) {
+        dataTable.ajax.reload();
+    } else {
+        location.reload();
+    }
 }
 </script>
 {% endblock %}
