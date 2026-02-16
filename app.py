@@ -1,6 +1,6 @@
 """
 UNIAGRARIA - SISTEMA DE RECOLECCIÓN FACATATIVÁ 2026
-VERSIÓN MEGA PROFESIONAL - COMPLETAMENTE FUNCIONAL
+VERSIÓN CORREGIDA Y OPTIMIZADA - 100% FUNCIONAL
 """
 
 import os
@@ -84,7 +84,7 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)
 app.config['SESSION_REFRESH_EACH_REQUEST'] = True
 
 # ==============================================
-# CONFIGURACIÓN NEONTECH POSTGRESQL - TU CONEXIÓN
+# CONFIGURACIÓN NEONTECH POSTGRESQL
 # ==============================================
 database_url = "postgresql://neondb_owner:npg_3bhmrtRwoiO8@ep-frosty-grass-ai2o51x9-pooler.c-4.us-east-1.aws.neon.tech/recoleccion?sslmode=require"
 
@@ -116,7 +116,7 @@ app.config['ALLOWED_IMAGES'] = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs('static/plantillas', exist_ok=True)
 
-# Configuración Cloudinary (si existe)
+# Configuración Cloudinary
 CLOUDINARY_CLOUD_NAME = os.environ.get('CLOUDINARY_CLOUD_NAME', '')
 CLOUDINARY_API_KEY = os.environ.get('CLOUDINARY_API_KEY', '')
 CLOUDINARY_API_SECRET = os.environ.get('CLOUDINARY_API_SECRET', '')
@@ -479,7 +479,6 @@ def login():
     
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
-        password = request.form.get('password', '')
         
         if not email:
             flash('Por favor ingresa tu correo', 'warning')
@@ -512,7 +511,7 @@ def login():
     
     auth_url = "#"  # Placeholder para Azure AD
     
-    return render_template('login.html', auth_url=auth_url)
+    return render_template('login.html', auth_url=auth_url, now=datetime.now)
 
 @app.route('/logout')
 @login_required
@@ -555,11 +554,12 @@ def dashboard():
                              completados=completados,
                              pendientes=pendientes,
                              registros_recientes=registros_recientes,
-                             usuario=current_user)
+                             usuario=current_user,
+                             now=datetime.now)
     except Exception as e:
         app.logger.error(f"Error en dashboard: {str(e)}")
         flash('Error al cargar el dashboard', 'error')
-        return render_template('dashboard.html', usuario=current_user)
+        return render_template('dashboard.html', usuario=current_user, now=datetime.now)
 
 # ============================================================================
 # RUTAS DE RECOLECCIÓN DE DATOS
@@ -586,7 +586,8 @@ def recoleccion():
                          registros=registros,
                          municipios=municipios,
                          instituciones=instituciones,
-                         periodo_actual=periodo)
+                         periodo_actual=periodo,
+                         now=datetime.now)
 
 @app.route('/api/recoleccion', methods=['POST'])
 @login_required
@@ -685,7 +686,9 @@ def ferias():
     municipios = Municipio.query.filter_by(activo=True).all()
     return render_template('ferias.html', 
                          ferias=ferias_list, 
-                         municipios=municipios)
+                         municipios=municipios,
+                         now=datetime.now,
+                         cloudinary_configurado=CLOUDINARY_CONFIGURED)
 
 @app.route('/api/ferias', methods=['POST'])
 @login_required
@@ -768,10 +771,11 @@ def api_subir_imagen_feria(feria_id):
                         public_id = result['public_id']
                     else:
                         # Guardar localmente
-                        file.seek(0)
-                        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-                        url = url_for('static', filename=f'uploads/{filename}', _external=True)
-                        public_id = filename
+                        safe_filename = f"{timestamp}_{random_hex}_{filename}"
+                        file_path = os.path.join(app.config['UPLOAD_FOLDER'], safe_filename)
+                        file.save(file_path)
+                        url = url_for('static', filename=f'uploads/{safe_filename}', _external=True)
+                        public_id = safe_filename
                     
                     imagen = FeriaImagen(
                         feria_id=feria_id,
@@ -825,7 +829,7 @@ def api_obtener_imagenes_feria(feria_id):
         app.logger.error(f"Error al obtener imágenes: {str(e)}")
         return jsonify({'error': 'Error al obtener imágenes'}), 500
 
-@app.route('/api/ferias/imagenes/<public_id>', methods=['DELETE'])
+@app.route('/api/ferias/imagenes/<path:public_id>', methods=['DELETE'])
 @login_required
 def api_eliminar_imagen(public_id):
     """Eliminar imagen de feria"""
@@ -841,8 +845,7 @@ def api_eliminar_imagen(public_id):
         else:
             # Eliminar archivo local
             try:
-                filename = public_id
-                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], public_id)
                 if os.path.exists(filepath):
                     os.remove(filepath)
             except:
@@ -872,7 +875,8 @@ def importacion():
     ).limit(20).all()
     
     return render_template('importacion.html', 
-                         importaciones=importaciones)
+                         importaciones=importaciones,
+                         now=datetime.now)
 
 @app.route('/api/importacion/excel', methods=['POST'])
 @login_required
@@ -1030,7 +1034,7 @@ def api_importar_excel():
 def reportes():
     """Página de reportes avanzados"""
     municipios = Municipio.query.filter_by(activo=True).all()
-    return render_template('reportes.html', municipios=municipios)
+    return render_template('reportes.html', municipios=municipios, now=datetime.now)
 
 @app.route('/api/reportes/general')
 @login_required
@@ -1206,7 +1210,8 @@ def archivos():
     ).limit(30).all()
     
     return render_template('archivos.html', 
-                         importaciones=importaciones)
+                         importaciones=importaciones,
+                         now=datetime.now)
 
 @app.route('/api/archivos/comprimir-todo')
 @login_required
@@ -1264,6 +1269,7 @@ Soporte: soporte@uniagraria.edu.co
         )
         
     except Exception as e:
+        db.session.rollback()
         app.logger.error(f"Error al comprimir archivos: {str(e)}")
         flash('Error al generar el archivo ZIP', 'error')
         return redirect(url_for('archivos'))
@@ -1278,7 +1284,7 @@ Soporte: soporte@uniagraria.edu.co
 def admin_usuarios():
     """Panel de administración de usuarios"""
     usuarios = Usuario.query.order_by(Usuario.fecha_registro.desc()).all()
-    return render_template('admin_usuarios.html', usuarios=usuarios)
+    return render_template('admin_usuarios.html', usuarios=usuarios, now=datetime.now)
 
 @app.route('/api/admin/usuarios/<int:user_id>/rol', methods=['PUT'])
 @login_required
@@ -1310,20 +1316,23 @@ def api_cambiar_rol(user_id):
 def not_found_error(error):
     return render_template('error.html', 
                          error_code=404, 
-                         error_message='Página no encontrada'), 404
+                         error_message='Página no encontrada',
+                         now=datetime.now), 404
 
 @app.errorhandler(500)
 def internal_error(error):
     db.session.rollback()
     return render_template('error.html', 
                          error_code=500, 
-                         error_message='Error interno del servidor'), 500
+                         error_message='Error interno del servidor',
+                         now=datetime.now), 500
 
 @app.errorhandler(429)
 def ratelimit_error(error):
     return render_template('error.html',
                          error_code=429,
-                         error_message='Demasiadas solicitudes. Por favor espere.'), 429
+                         error_message='Demasiadas solicitudes. Por favor espere.',
+                         now=datetime.now), 429
 
 # ============================================================================
 # INICIALIZACIÓN DE LA APLICACIÓN
@@ -1335,6 +1344,7 @@ def init_database():
         try:
             # Crear tablas
             db.create_all()
+            print("✅ Tablas creadas/verificadas en NeonTech")
             
             # Municipios iniciales
             municipios_iniciales = [
@@ -1345,6 +1355,7 @@ def init_database():
             for m in municipios_iniciales:
                 if not Municipio.query.filter_by(nombre=m).first():
                     db.session.add(Municipio(nombre=m))
+                    print(f"✅ Municipio añadido: {m}")
             
             # Usuarios admin por defecto
             admins_default = [
@@ -1358,6 +1369,7 @@ def init_database():
             for admin in admins_default:
                 if not Usuario.query.filter_by(email=admin['email']).first():
                     db.session.add(Usuario(**admin))
+                    print(f"✅ Admin añadido: {admin['email']}")
             
             db.session.commit()
             print("✅ Base de datos inicializada correctamente")
@@ -1422,4 +1434,4 @@ with app.app_context():
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.1', port=port, debug=True)
+    app.run(host='0.0.0.0', port=port, debug=False)
