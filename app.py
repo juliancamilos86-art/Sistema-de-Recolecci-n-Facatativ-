@@ -238,19 +238,22 @@ class Institucion(db.Model):
     contacto = db.Column(db.String(255))
     activo = db.Column(db.Boolean, default=True)
     
-    registros = db.relationship('RecoleccionDato', backref='institucion', lazy=True)
+    # Relación correcta con Municipio
+    municipio = db.relationship('Municipio', backref='instituciones_list', lazy=True)
+    registros = db.relationship('RecoleccionDato', backref='institucion_rel', lazy=True)
     
     def to_dict(self):
         return {
             'id': self.id,
             'nombre': self.nombre,
             'municipio_id': self.municipio_id,
-            'municipio': self.municipio.nombre if self.municipio else None,
+            'municipio_nombre': self.municipio.nombre if self.municipio else None,
             'direccion': self.direccion,
             'telefono': self.telefono,
-            'contacto': self.contacto
+            'contacto': self.contacto,
+            'activo': self.activo
         }
-
+        
 class RecoleccionDato(db.Model):
     """Modelo principal para la recolección de datos"""
     __tablename__ = 'recoleccion_datos'
@@ -585,8 +588,11 @@ def dashboard():
 @login_required
 def recoleccion():
     """Vista de recolección de datos"""
+    # Obtener municipios activos
     municipios = Municipio.query.filter_by(activo=True).all()
-    instituciones = Institucion.query.filter_by(activo=True).all()
+    
+    # Obtener instituciones activas con sus municipios cargados
+    instituciones = Institucion.query.options(db.joinedload(Institucion.municipio)).filter_by(activo=True).all()
     
     municipio_id = request.args.get('municipio', type=int)
     periodo = request.args.get('periodo', '2026-1')
