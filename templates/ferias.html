@@ -26,8 +26,16 @@
         </div>
     </div>
 
+    <!-- Mensaje de Cloudinary -->
+    {% if not cloudinary_configurado %}
+    <div class="alert alert-info mb-4">
+        <i class="fas fa-info-circle me-2"></i>
+        Cloudinary no está configurado. Las imágenes se guardarán localmente en la carpeta uploads.
+    </div>
+    {% endif %}
+
     <!-- Grid de Ferias -->
-    <div class="row">
+    <div class="row" id="feriasContainer">
         {% for feria in ferias %}
         <div class="col-md-4 mb-4">
             <div class="card card-uniagraria h-100">
@@ -40,12 +48,12 @@
                 <div class="card-body">
                     <p class="mb-2">
                         <i class="fas fa-map-marker-alt text-success me-2"></i>
-                        {{ feria.ubicacion }}
+                        {{ feria.ubicacion or 'Por definir' }}
                     </p>
                     <p class="mb-2">
                         <i class="fas fa-calendar text-success me-2"></i>
                         {% if feria.fecha_inicio %}
-                        {{ feria.fecha_inicio.strftime('%d/%m/%Y') }}
+                        {{ feria.fecha_inicio.strftime('%d/%m/%Y') if feria.fecha_inicio else '' }}
                         {% if feria.fecha_fin %} - {{ feria.fecha_fin.strftime('%d/%m/%Y') }}{% endif %}
                         {% else %}
                         Fecha por definir
@@ -56,19 +64,27 @@
                         {{ feria.municipio_rel.nombre if feria.municipio_rel else 'N/A' }}
                     </p>
                     <p class="mb-3">
-                        <span class="badge bg-info">
+                        <span class="badge bg-info" id="contador-{{ feria.id }}">
                             <i class="fas fa-images me-1"></i>
-                            {{ feria.imagenes|length }} imágenes
+                            <span class="contador-valor">{{ feria.imagenes|length }}</span> imágenes
                         </span>
                     </p>
                     <p class="text-muted small">{{ feria.descripcion|truncate(100) }}</p>
                 </div>
                 <div class="card-footer bg-transparent">
-                    <button class="btn btn-sm btn-outline-success w-100" onclick="abrirGaleria({{ feria.id }}, '{{ feria.nombre }}')">
+                    <button class="btn btn-sm btn-outline-success w-100" onclick="abrirGaleria({{ feria.id }}, '{{ feria.nombre|escapejs }}')">
                         <i class="fas fa-images me-2"></i>
                         Ver Galería
                     </button>
                 </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="col-12">
+            <div class="alert alert-info text-center py-5">
+                <i class="fas fa-images fa-4x mb-3"></i>
+                <h4>No hay ferias creadas</h4>
+                <p>Haz clic en "Nueva Feria" para comenzar</p>
             </div>
         </div>
         {% endfor %}
@@ -144,11 +160,73 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <!-- Dropzone para subir imágenes -->
-                <div class="dropzone" id="dropzoneImagenes"></div>
+                <!-- Formulario de subida -->
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h6 class="text-success mb-3">
+                            <i class="fas fa-cloud-upload-alt me-2"></i>
+                            Subir nuevas imágenes
+                        </h6>
+                        <form id="uploadForm" enctype="multipart/form-data">
+                            <input type="hidden" id="feriaId" name="feria_id">
+                            <div class="mb-3">
+                                <label class="form-label">Seleccionar imágenes</label>
+                                <input type="file" class="form-control" id="fileInput" 
+                                       name="images" multiple accept="image/*">
+                                <small class="text-muted">
+                                    Formatos: JPG, PNG, GIF. Máximo 10MB por imagen.
+                                </small>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Descripción (opcional)</label>
+                                <input type="text" class="form-control" id="descripcion" 
+                                       name="descripcion" placeholder="Descripción de las imágenes">
+                            </div>
+                            <button type="button" class="btn btn-uniagraria" onclick="subirImagenes()">
+                                <i class="fas fa-upload me-2"></i>
+                                Subir imágenes
+                            </button>
+                        </form>
+                        
+                        <!-- Barra de progreso -->
+                        <div id="progressContainer" style="display: none;" class="mt-3">
+                            <div class="progress">
+                                <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                                     role="progressbar" style="width: 0%">0%</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 
                 <!-- Grid de imágenes -->
-                <div class="row mt-4" id="gridImagenes"></div>
+                <h6 class="text-success mb-3">
+                    <i class="fas fa-images me-2"></i>
+                    Imágenes subidas
+                </h6>
+                <div class="row" id="gridImagenes">
+                    <div class="col-12 text-center py-4">
+                        <i class="fas fa-spinner fa-spin fa-3x text-success"></i>
+                        <p class="mt-2">Cargando imágenes...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para ver imagen ampliada -->
+<div class="modal fade" id="imagenModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-image me-2"></i>
+                    Vista previa
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img src="" id="imagenAmpliada" class="img-fluid" style="max-height: 70vh;">
             </div>
         </div>
     </div>
@@ -157,78 +235,22 @@
 <script>
 let feriaActual = null;
 
-// Configurar Dropzone
-Dropzone.autoDiscover = false;
-
 function abrirGaleria(feriaId, nombreFeria) {
     feriaActual = feriaId;
+    document.getElementById('feriaId').value = feriaId;
     document.getElementById('galeriaTitulo').innerHTML = `<i class="fas fa-images me-2"></i>Galería - ${nombreFeria}`;
+    document.getElementById('fileInput').value = '';
+    document.getElementById('descripcion').value = '';
+    document.getElementById('progressContainer').style.display = 'none';
     
-    // Inicializar Dropzone
-    const dropzone = new Dropzone("#dropzoneImagenes", {
-        url: `/api/ferias/${feriaId}/imagenes`,
-        headers: {
-            'X-CSRFToken': csrftoken
-        },
-        paramName: 'images',
-        maxFilesize: 10,
-        acceptedFiles: 'image/*',
-        dictDefaultMessage: 'Arrastra las imágenes aquí o haz clic para subir',
-        dictFallbackMessage: "Tu navegador no soporta arrastrar archivos",
-        dictFileTooBig: "El archivo es demasiado grande ({{filesize}}MB). Máximo: {{maxFilesize}}MB.",
-        dictInvalidFileType: "No puedes subir archivos de este tipo",
-        dictCancelUpload: "Cancelar subida",
-        dictUploadCanceled: "Subida cancelada",
-        dictRemoveFile: "Eliminar archivo"
-    });
-    
-    dropzone.on("success", function(file, response) {
-        toastr.success(`Imagen subida correctamente`);
-        cargarImagenes(feriaId);
-    });
-    
-    dropzone.on("error", function(file, errorMessage) {
-        toastr.error(`Error al subir imagen: ${errorMessage}`);
-    });
-    
-    // Cargar imágenes existentes
     cargarImagenes(feriaId);
     
-    // Abrir modal
     new bootstrap.Modal(document.getElementById('galeriaModal')).show();
 }
 
-function cargarImagenes(feriaId) {
-    fetch(`/api/ferias/${feriaId}/imagenes`)
-        .then(response => response.json())
-        .then(data => {
-            const grid = document.getElementById('gridImagenes');
-            grid.innerHTML = '';
-            
-            data.imagenes.forEach(imagen => {
-                const col = document.createElement('div');
-                col.className = 'col-md-4 mb-3';
-                col.innerHTML = `
-                    <div class="card">
-                        <img src="${imagen.url}" class="card-img-top" style="height: 200px; object-fit: cover;">
-                        <div class="card-body">
-                            <p class="small text-muted">
-                                <i class="fas fa-user me-1"></i>${imagen.usuario || 'N/A'}<br>
-                                <i class="fas fa-clock me-1"></i>${new Date(imagen.fecha).toLocaleDateString()}
-                            </p>
-                            <button class="btn btn-sm btn-danger" onclick="eliminarImagen('${imagen.public_id}')">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
-                    </div>
-                `;
-                grid.appendChild(col);
-            });
-        });
-}
-
 function guardarFeria() {
-    const formData = new FormData(document.getElementById('formFeria'));
+    const form = document.getElementById('formFeria');
+    const formData = new FormData(form);
     const data = Object.fromEntries(formData.entries());
     
     fetch('/api/ferias', {
@@ -245,13 +267,176 @@ function guardarFeria() {
             toastr.error(data.error);
         } else {
             toastr.success('Feria creada exitosamente');
-            setTimeout(() => location.reload(), 2000);
+            setTimeout(() => location.reload(), 1500);
         }
     })
     .catch(error => {
         console.error('Error:', error);
         toastr.error('Error al crear la feria');
     });
+}
+
+function subirImagenes() {
+    const fileInput = document.getElementById('fileInput');
+    const descripcion = document.getElementById('descripcion').value;
+    
+    if (!fileInput.files || fileInput.files.length === 0) {
+        toastr.warning('Selecciona al menos una imagen');
+        return;
+    }
+    
+    const formData = new FormData();
+    for (let i = 0; i < fileInput.files.length; i++) {
+        formData.append('images', fileInput.files[i]);
+    }
+    if (descripcion) {
+        formData.append('descripcion', descripcion);
+    }
+    
+    document.getElementById('progressContainer').style.display = 'block';
+    const progressBar = document.getElementById('progressBar');
+    
+    fetch(`/api/ferias/${feriaActual}/imagenes`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrftoken
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        progressBar.style.width = '100%';
+        progressBar.textContent = '100%';
+        
+        if (data.error) {
+            toastr.error(data.error);
+        } else {
+            toastr.success(data.message);
+            cargarImagenes(feriaActual);
+            
+            // Actualizar contador en la tarjeta
+            const contadorSpan = document.querySelector(`#contador-${feriaActual} .contador-valor`);
+            if (contadorSpan) {
+                const total = data.imagenes.length + (parseInt(contadorSpan.textContent) || 0);
+                contadorSpan.textContent = total;
+            }
+            
+            // Limpiar inputs
+            document.getElementById('fileInput').value = '';
+            document.getElementById('descripcion').value = '';
+        }
+        
+        setTimeout(() => {
+            document.getElementById('progressContainer').style.display = 'none';
+            progressBar.style.width = '0%';
+            progressBar.textContent = '0%';
+        }, 2000);
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        toastr.error('Error al subir imágenes');
+        document.getElementById('progressContainer').style.display = 'none';
+    });
+}
+
+function cargarImagenes(feriaId) {
+    const grid = document.getElementById('gridImagenes');
+    
+    fetch(`/api/ferias/${feriaId}/imagenes`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.imagenes && data.imagenes.length > 0) {
+                grid.innerHTML = '';
+                data.imagenes.forEach(imagen => {
+                    const col = document.createElement('div');
+                    col.className = 'col-md-3 mb-3';
+                    col.innerHTML = `
+                        <div class="card h-100">
+                            <img src="${imagen.url}" class="card-img-top" style="height: 150px; object-fit: cover; cursor: pointer;" 
+                                 onclick="verImagen('${imagen.url}')">
+                            <div class="card-body p-2">
+                                <p class="small text-muted mb-1">
+                                    <i class="fas fa-user me-1"></i>${imagen.usuario || 'N/A'}<br>
+                                    <i class="fas fa-clock me-1"></i>${new Date(imagen.fecha).toLocaleDateString()}
+                                </p>
+                                <button class="btn btn-sm btn-danger w-100" onclick="eliminarImagen('${imagen.public_id}', ${feriaId})">
+                                    <i class="fas fa-trash"></i> Eliminar
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    grid.appendChild(col);
+                });
+            } else {
+                grid.innerHTML = `
+                    <div class="col-12 text-center py-4">
+                        <i class="fas fa-images fa-4x text-muted mb-3"></i>
+                        <p class="text-muted">No hay imágenes en esta feria</p>
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            grid.innerHTML = `
+                <div class="col-12 text-center py-4">
+                    <i class="fas fa-exclamation-circle fa-4x text-danger mb-3"></i>
+                    <p class="text-danger">Error al cargar imágenes</p>
+                </div>
+            `;
+        });
+}
+
+function verImagen(url) {
+    document.getElementById('imagenAmpliada').src = url;
+    new bootstrap.Modal(document.getElementById('imagenModal')).show();
+}
+
+function eliminarImagen(publicId, feriaId) {
+    Swal.fire({
+        title: '¿Eliminar imagen?',
+        text: 'Esta acción no se puede deshacer',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(`/api/ferias/imagenes/${publicId}`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRFToken': csrftoken
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    toastr.error(data.error);
+                } else {
+                    toastr.success('Imagen eliminada');
+                    cargarImagenes(feriaId);
+                    
+                    // Actualizar contador
+                    const contadorSpan = document.querySelector(`#contador-${feriaId} .contador-valor`);
+                    if (contadorSpan) {
+                        const total = parseInt(contadorSpan.textContent) - 1;
+                        contadorSpan.textContent = total >= 0 ? total : 0;
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                toastr.error('Error al eliminar imagen');
+            });
+        }
+    });
+}
+
+// Escapar caracteres para JavaScript
+function escapeJsString(str) {
+    return str.replace(/[\\"']/g, '\\$&').replace(/\u0000/g, '\\0');
 }
 </script>
 {% endblock %}
