@@ -165,20 +165,39 @@
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-bold text-success">Municipio *</label>
                             <select class="form-select select2" name="municipio_id" id="municipio_id" required>
-                                <option value="">Seleccione un municipio</option>
+                                <option value="">-- Seleccione un municipio --</option>
                                 {% for m in municipios %}
                                 <option value="{{ m.id }}">{{ m.nombre }}</option>
                                 {% endfor %}
                             </select>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold text-success">Institución Educativa</label>
+                            <label class="form-label fw-bold text-success">
+                                <i class="fas fa-school me-2"></i>
+                                Institución Educativa
+                            </label>
                             <select class="form-select select2" name="institucion_id" id="institucion_id">
-                                <option value="">Seleccione una institución (opcional)</option>
+                                <option value="">-- Seleccione una institución --</option>
                                 {% for i in instituciones %}
-                                <option value="{{ i.id }}">{{ i.nombre }}</option>
+                                <option value="{{ i.id }}" 
+                                        data-municipio="{{ i.municipio_id }}"
+                                        data-municipio-nombre="{{ i.municipio.nombre if i.municipio else '' }}"
+                                        data-direccion="{{ i.direccion or '' }}"
+                                        data-telefono="{{ i.telefono or '' }}"
+                                        data-contacto="{{ i.contacto or '' }}">
+                                    {{ i.nombre }}
+                                    {% if i.municipio %}
+                                        ({{ i.municipio.nombre }})
+                                    {% endif %}
+                                </option>
                                 {% endfor %}
                             </select>
+                            
+                            <!-- Información adicional de la institución seleccionada -->
+                            <div id="institucionInfo" class="small text-muted mt-2 p-2 bg-light rounded" style="display: none;">
+                                <i class="fas fa-info-circle me-1 text-success"></i>
+                                <span id="institucionDetalle"></span>
+                            </div>
                         </div>
                     </div>
                     
@@ -310,18 +329,28 @@
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-bold text-success">Municipio *</label>
                             <select class="form-select select2" name="municipio_id" id="edit_municipio_id" required>
-                                <option value="">Seleccione un municipio</option>
+                                <option value="">-- Seleccione un municipio --</option>
                                 {% for m in municipios %}
                                 <option value="{{ m.id }}">{{ m.nombre }}</option>
                                 {% endfor %}
                             </select>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold text-success">Institución Educativa</label>
+                            <label class="form-label fw-bold text-success">
+                                <i class="fas fa-school me-2"></i>
+                                Institución Educativa
+                            </label>
                             <select class="form-select select2" name="institucion_id" id="edit_institucion_id">
-                                <option value="">Seleccione una institución (opcional)</option>
+                                <option value="">-- Seleccione una institución --</option>
                                 {% for i in instituciones %}
-                                <option value="{{ i.id }}">{{ i.nombre }}</option>
+                                <option value="{{ i.id }}" 
+                                        data-municipio="{{ i.municipio_id }}"
+                                        data-municipio-nombre="{{ i.municipio.nombre if i.municipio else '' }}">
+                                    {{ i.nombre }}
+                                    {% if i.municipio %}
+                                        ({{ i.municipio.nombre }})
+                                    {% endif %}
+                                </option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -551,7 +580,7 @@ $(document).ready(function() {
             pageLength: 25,
             order: [[0, 'desc']],
             columnDefs: [
-                { orderable: false, targets: 9 } // Columna de acciones no ordenable
+                { orderable: false, targets: 9 }
             ]
         });
     }
@@ -560,23 +589,64 @@ $(document).ready(function() {
     $('.select2').select2({
         theme: 'bootstrap-5',
         width: '100%',
-        dropdownParent: $('#editarRegistroModal')
+        dropdownParent: $('#nuevoRegistroModal, #editarRegistroModal')
+    });
+    
+    // Filtrar instituciones por municipio
+    $('#municipio_id, #edit_municipio_id').on('change', function() {
+        const municipioId = $(this).val();
+        const targetSelect = $(this).attr('id') === 'municipio_id' ? '#institucion_id' : '#edit_institucion_id';
+        const infoDiv = $(this).attr('id') === 'municipio_id' ? '#institucionInfo' : null;
+        
+        $(targetSelect + ' option').each(function() {
+            if ($(this).val() !== '') {
+                const optionMunicipio = $(this).data('municipio');
+                if (municipioId && optionMunicipio && optionMunicipio != municipioId) {
+                    $(this).hide();
+                } else {
+                    $(this).show();
+                }
+            }
+        });
+        
+        $(targetSelect).val('').trigger('change');
+        if (infoDiv) $(infoDiv).hide();
+    });
+    
+    // Mostrar detalles de institución seleccionada
+    $('#institucion_id').on('change', function() {
+        const selected = $(this).find('option:selected');
+        if ($(this).val()) {
+            const nombre = selected.text().split('(')[0].trim();
+            const municipio = selected.data('municipio-nombre');
+            const direccion = selected.data('direccion');
+            const telefono = selected.data('telefono');
+            const contacto = selected.data('contacto');
+            
+            let detalle = `<strong>${nombre}</strong><br>`;
+            if (municipio) detalle += `<i class="fas fa-map-marker-alt me-1"></i> ${municipio}<br>`;
+            if (direccion) detalle += `<i class="fas fa-road me-1"></i> ${direccion}<br>`;
+            if (telefono) detalle += `<i class="fas fa-phone me-1"></i> ${telefono}<br>`;
+            if (contacto) detalle += `<i class="fas fa-user me-1"></i> ${contacto}`;
+            
+            $('#institucionDetalle').html(detalle);
+            $('#institucionInfo').show();
+        } else {
+            $('#institucionInfo').hide();
+        }
     });
 });
 
-// Guardar registro (CREAR)
+// Guardar registro
 function guardarRegistro() {
     const form = document.getElementById('formRegistro');
     const formData = new FormData(form);
     const data = Object.fromEntries(formData.entries());
     
-    // Validar campos requeridos
     if (!data.municipio_id) {
         toastr.warning('Por favor seleccione un municipio');
         return;
     }
-    
-    console.log('Creando registro:', data);
     
     fetch('/api/recoleccion', {
         method: 'POST',
@@ -607,18 +677,16 @@ function guardarRegistro() {
     });
 }
 
-// Editar registro (CARGAR DATOS EN MODAL)
+// Editar registro
 function editarRegistro(id) {
     registroActualId = id;
     
-    // Mostrar modal de edición con loading
     document.getElementById('editarCargando').style.display = 'block';
     document.getElementById('formEditar').style.display = 'none';
     
     const modal = new bootstrap.Modal(document.getElementById('editarRegistroModal'));
     modal.show();
     
-    // Cargar datos del registro
     fetch(`/api/recoleccion/${id}`)
         .then(response => {
             if (!response.ok) {
@@ -627,9 +695,6 @@ function editarRegistro(id) {
             return response.json();
         })
         .then(data => {
-            console.log('Datos cargados para editar:', data);
-            
-            // Llenar formulario
             document.getElementById('edit_id').value = data.id || '';
             document.getElementById('edit_ficha_toma_registro').value = data.ficha || '';
             document.getElementById('edit_asesor').value = data.asesor || '';
@@ -647,11 +712,9 @@ function editarRegistro(id) {
             document.getElementById('edit_estado').value = data.estado || 'pendiente';
             document.getElementById('edit_ano_periodo').value = data.periodo || '2026-1';
             
-            // Actualizar Select2
             $('#edit_municipio_id').trigger('change');
             $('#edit_institucion_id').trigger('change');
             
-            // Ocultar loading y mostrar formulario
             document.getElementById('editarCargando').style.display = 'none';
             document.getElementById('formEditar').style.display = 'block';
         })
@@ -660,7 +723,6 @@ function editarRegistro(id) {
             document.getElementById('editarCargando').innerHTML = `
                 <i class="fas fa-exclamation-circle fa-3x text-danger mb-3"></i>
                 <p class="text-danger">Error al cargar los datos</p>
-                <p class="text-muted small">${error.message}</p>
                 <button class="btn btn-sm btn-primary mt-3" onclick="editarRegistro(${id})">
                     <i class="fas fa-redo me-2"></i>Reintentar
                 </button>
@@ -668,20 +730,17 @@ function editarRegistro(id) {
         });
 }
 
-// Actualizar registro (GUARDAR CAMBIOS)
+// Actualizar registro
 function actualizarRegistro() {
     const form = document.getElementById('formEditar');
     const formData = new FormData(form);
     const data = Object.fromEntries(formData.entries());
     const id = data.id;
     
-    // Validar campos requeridos
     if (!data.municipio_id) {
         toastr.warning('Por favor seleccione un municipio');
         return;
     }
-    
-    console.log('Actualizando registro:', id, data);
     
     fetch(`/api/recoleccion/${id}`, {
         method: 'PUT',
@@ -712,7 +771,7 @@ function actualizarRegistro() {
     });
 }
 
-// Ver detalle del registro
+// Ver detalle
 function verDetalle(id) {
     registroActualId = id;
     
@@ -730,8 +789,6 @@ function verDetalle(id) {
             return response.json();
         })
         .then(data => {
-            console.log('Detalles cargados:', data);
-            
             document.getElementById('detalle_id').textContent = data.id || 'N/A';
             document.getElementById('detalle_ficha').textContent = data.ficha || 'N/A';
             document.getElementById('detalle_asesor').textContent = data.asesor || 'N/A';
@@ -765,7 +822,6 @@ function verDetalle(id) {
             document.getElementById('detalleCargando').innerHTML = `
                 <i class="fas fa-exclamation-circle fa-3x text-danger mb-3"></i>
                 <p class="text-danger">Error al cargar los detalles</p>
-                <p class="text-muted small">${error.message}</p>
                 <button class="btn btn-sm btn-info mt-3" onclick="verDetalle(${id})">
                     <i class="fas fa-redo me-2"></i>Reintentar
                 </button>
@@ -773,7 +829,6 @@ function verDetalle(id) {
         });
 }
 
-// Editar desde el modal de detalle
 function editarDesdeDetalle() {
     if (registroActualId) {
         bootstrap.Modal.getInstance(document.getElementById('detalleModal')).hide();
