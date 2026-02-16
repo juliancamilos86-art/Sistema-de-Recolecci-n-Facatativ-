@@ -1,6 +1,6 @@
 """
 UNIAGRARIA - SISTEMA DE RECOLECCIÓN FACATATIVÁ 2026
-VERSIÓN CORREGIDA Y OPTIMIZADA - 100% FUNCIONAL
+Julian Camilo Quintero Martinez
 """
 
 import os
@@ -119,35 +119,35 @@ os.makedirs('static/plantillas', exist_ok=True)
 # ==============================================
 # CONFIGURACIÓN CLOUDINARY - CORREGIDA
 # ==============================================
-# Usar variables de entorno o valores predeterminados
-CLOUDINARY_CLOUD_NAME = os.environ.get('CLOUDINARY_CLOUD_NAME', '')
-CLOUDINARY_API_KEY = os.environ.get('CLOUDINARY_API_KEY', '')
-CLOUDINARY_API_SECRET = os.environ.get('CLOUDINARY_API_SECRET', '')
+CLOUDINARY_CLOUD_NAME = 'dcplwmqpp'
+CLOUDINARY_API_KEY = '315877441477912'  # <--- ESTE ES EL CORRECTO
+CLOUDINARY_API_SECRET = '_VMLEqXJBVYD70HzVfNOBaRWYjE'  # <--- ESTE ES EL CORRECTO
 
-# Mostrar estado de configuración
 print("=" * 50)
-print("🔵 CONFIGURACIÓN CLOUDINARY")
-print(f"🔵 Cloud Name: {CLOUDINARY_CLOUD_NAME or 'No configurado'}")
-print(f"🔵 API Key: {'Configurado' if CLOUDINARY_API_KEY else 'No configurado'}")
-print(f"🔵 API Secret: {'Configurado' if CLOUDINARY_API_SECRET else 'No configurado'}")
+print("🔵 CONFIGURACIÓN CLOUDINARY - VALORES ACTUALIZADOS")
+print(f"🔵 Cloud Name: {CLOUDINARY_CLOUD_NAME}")
+print(f"🔵 API Key: {CLOUDINARY_API_KEY[:5]}... (longitud: {len(CLOUDINARY_API_KEY)})")
+print(f"🔵 API Secret: {'Configurado'} (longitud: {len(CLOUDINARY_API_SECRET)})")
 print("=" * 50)
 
-if CLOUDINARY_CLOUD_NAME and CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET:
-    try:
-        cloudinary.config(
-            cloud_name=CLOUDINARY_CLOUD_NAME,
-            api_key=CLOUDINARY_API_KEY,
-            api_secret=CLOUDINARY_API_SECRET,
-            secure=True
-        )
-        CLOUDINARY_CONFIGURED = True
-        print("✅ CLOUDINARY CONFIGURADO CORRECTAMENTE")
-    except Exception as e:
-        CLOUDINARY_CONFIGURED = False
-        print(f"❌ Error al configurar Cloudinary: {str(e)}")
-else:
+# Configurar Cloudinary
+try:
+    cloudinary.config(
+        cloud_name=CLOUDINARY_CLOUD_NAME,
+        api_key=CLOUDINARY_API_KEY,
+        api_secret=CLOUDINARY_API_SECRET,
+        secure=True
+    )
+    
+    # Probar la conexión
+    test_result = cloudinary.api.ping()
+    print(f"✅ CLOUDINARY CONECTADO CORRECTAMENTE: {test_result}")
+    CLOUDINARY_CONFIGURED = True
+    
+except Exception as e:
     CLOUDINARY_CONFIGURED = False
-    print("⚠️ Cloudinary no configurado - Las imágenes se guardarán localmente")
+    print(f"❌ Error al configurar Cloudinary: {str(e)}")
+    print("⚠️ Las imágenes se guardarán localmente como respaldo")
 
 # Inicializar extensiones
 db = SQLAlchemy(app)
