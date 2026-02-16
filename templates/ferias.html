@@ -53,10 +53,10 @@
                     <p class="mb-2">
                         <i class="fas fa-calendar text-success me-2"></i>
                         {% if feria.fecha_inicio %}
-                        {{ feria.fecha_inicio.strftime('%d/%m/%Y') if feria.fecha_inicio else '' }}
-                        {% if feria.fecha_fin %} - {{ feria.fecha_fin.strftime('%d/%m/%Y') }}{% endif %}
+                            {{ feria.fecha_inicio.strftime('%d/%m/%Y') }}
+                            {% if feria.fecha_fin %} - {{ feria.fecha_fin.strftime('%d/%m/%Y') }}{% endif %}
                         {% else %}
-                        Fecha por definir
+                            Fecha por definir
                         {% endif %}
                     </p>
                     <p class="mb-2">
@@ -72,7 +72,7 @@
                     <p class="text-muted small">{{ feria.descripcion|truncate(100) }}</p>
                 </div>
                 <div class="card-footer bg-transparent">
-                    <button class="btn btn-sm btn-outline-success w-100" onclick="abrirGaleria({{ feria.id }}, '{{ feria.nombre|escapejs }}')">
+                    <button class="btn btn-sm btn-outline-success w-100" onclick='abrirGaleria({{ feria.id }}, {{ feria.nombre|tojson|safe }})'>
                         <i class="fas fa-images me-2"></i>
                         Ver Galería
                     </button>
@@ -295,6 +295,8 @@ function subirImagenes() {
     
     document.getElementById('progressContainer').style.display = 'block';
     const progressBar = document.getElementById('progressBar');
+    progressBar.style.width = '0%';
+    progressBar.textContent = '0%';
     
     fetch(`/api/ferias/${feriaActual}/imagenes`, {
         method: 'POST',
@@ -317,8 +319,8 @@ function subirImagenes() {
             // Actualizar contador en la tarjeta
             const contadorSpan = document.querySelector(`#contador-${feriaActual} .contador-valor`);
             if (contadorSpan) {
-                const total = data.imagenes.length + (parseInt(contadorSpan.textContent) || 0);
-                contadorSpan.textContent = total;
+                const totalActual = parseInt(contadorSpan.textContent) || 0;
+                contadorSpan.textContent = totalActual + data.imagenes.length;
             }
             
             // Limpiar inputs
@@ -341,6 +343,7 @@ function subirImagenes() {
 
 function cargarImagenes(feriaId) {
     const grid = document.getElementById('gridImagenes');
+    grid.innerHTML = '<div class="col-12 text-center py-4"><i class="fas fa-spinner fa-spin fa-3x text-success"></i><p class="mt-2">Cargando imágenes...</p></div>';
     
     fetch(`/api/ferias/${feriaId}/imagenes`)
         .then(response => response.json())
@@ -404,7 +407,7 @@ function eliminarImagen(publicId, feriaId) {
         cancelButtonText: 'Cancelar'
     }).then((result) => {
         if (result.isConfirmed) {
-            fetch(`/api/ferias/imagenes/${publicId}`, {
+            fetch(`/api/ferias/imagenes/${encodeURIComponent(publicId)}`, {
                 method: 'DELETE',
                 headers: {
                     'X-CSRFToken': csrftoken
@@ -432,11 +435,6 @@ function eliminarImagen(publicId, feriaId) {
             });
         }
     });
-}
-
-// Escapar caracteres para JavaScript
-function escapeJsString(str) {
-    return str.replace(/[\\"']/g, '\\$&').replace(/\u0000/g, '\\0');
 }
 </script>
 {% endblock %}
