@@ -227,7 +227,6 @@ class Municipio(db.Model):
             'nombre': self.nombre,
             'departamento': self.departamento
         }
-}
 
 class Institucion(db.Model):
     """Modelo de instituciones educativas"""
