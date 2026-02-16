@@ -37,7 +37,7 @@
         </div>
         <div class="card-body">
             <div class="table-responsive">
-                <table class="table table-hover datatable">
+                <table class="table table-hover datatable" id="tablaUsuarios">
                     <thead>
                         <tr>
                             <th>ID</th>
@@ -117,25 +117,25 @@
             </div>
         </div>
     </div>
-
-    <!-- Información de Admins por Defecto -->
-    <div class="card card-uniagraria mt-4 animate-slide-in" style="animation-delay: 0.2s;">
-        <div class="card-body">
-            <div class="alert alert-info mb-0">
-                <h6 class="alert-heading">
-                    <i class="fas fa-info-circle me-2"></i>
-                    Usuarios Administradores por Defecto
-                </h6>
-                <p class="mb-0 small">
-                    El sistema tiene 5 usuarios administradores preconfigurados:
-                    <strong>admin1@uniagraria.edu.co</strong> al <strong>admin5@uniagraria.edu.co</strong>
-                </p>
-            </div>
-        </div>
-    </div>
 </div>
 
 <script>
+$(document).ready(function() {
+    if ($('#tablaUsuarios tbody tr').length > 0) {
+        $('#tablaUsuarios').DataTable({
+            responsive: true,
+            language: {
+                url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
+            },
+            pageLength: 10,
+            order: [[0, 'desc']],
+            columnDefs: [
+                { orderable: false, targets: 8 }
+            ]
+        });
+    }
+});
+
 function cambiarRol(userId, rolActual) {
     const nuevoRol = rolActual === 'admin' ? 'usuario' : 'admin';
     
