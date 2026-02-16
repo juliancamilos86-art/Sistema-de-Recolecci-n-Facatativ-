@@ -346,7 +346,7 @@ class Feria(db.Model):
             'descripcion': self.descripcion,
             'activa': self.activa,
             'total_imagenes': len(self.imagenes) if self.imagenes else 0
-        }}
+        }
 
 class FeriaImagen(db.Model):
     """Modelo de imágenes de ferias"""
