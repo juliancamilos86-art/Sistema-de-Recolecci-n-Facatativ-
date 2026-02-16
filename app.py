@@ -1403,6 +1403,31 @@ def api_cambiar_rol(user_id):
         app.logger.error(f"Error al cambiar rol: {str(e)}")
         return jsonify({'error': 'Error al cambiar rol'}), 500
 
+@app.route('/api/importacion/detalles/<int:id>', methods=['GET'])
+@login_required
+def api_detalles_importacion(id):
+    """Obtener detalles de una importación específica"""
+    try:
+        importacion = ArchivoImportado.query.get_or_404(id)
+        
+        # Obtener nombre del usuario
+        usuario_nombre = importacion.usuario_importo.nombre if importacion.usuario_importo else None
+        
+        return jsonify({
+            'id': importacion.id,
+            'nombre_archivo': importacion.nombre_archivo,
+            'fecha_importacion': importacion.fecha_importacion.isoformat() if importacion.fecha_importacion else None,
+            'usuario': usuario_nombre,
+            'registros_procesados': importacion.registros_procesados,
+            'estado': importacion.estado,
+            'tipo': importacion.tipo,
+            'url': importacion.url,
+            'datos_metadata': importacion.datos_metadata
+        })
+        
+    except Exception as e:
+        app.logger.error(f"Error al obtener detalles de importación: {str(e)}")
+        return jsonify({'error': 'Error al obtener detalles'}), 500
 # ============================================================================
 # MANEJO DE ERRORES
 # ============================================================================
