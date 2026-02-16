@@ -116,19 +116,35 @@ app.config['ALLOWED_IMAGES'] = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs('static/plantillas', exist_ok=True)
 
-# Configuración Cloudinary
+# ==============================================
+# CONFIGURACIÓN CLOUDINARY - CORREGIDA
+# ==============================================
+# Usar variables de entorno o valores predeterminados
 CLOUDINARY_CLOUD_NAME = os.environ.get('CLOUDINARY_CLOUD_NAME', '')
 CLOUDINARY_API_KEY = os.environ.get('CLOUDINARY_API_KEY', '')
 CLOUDINARY_API_SECRET = os.environ.get('CLOUDINARY_API_SECRET', '')
 
+# Mostrar estado de configuración
+print("=" * 50)
+print("🔵 CONFIGURACIÓN CLOUDINARY")
+print(f"🔵 Cloud Name: {CLOUDINARY_CLOUD_NAME or 'No configurado'}")
+print(f"🔵 API Key: {'Configurado' if CLOUDINARY_API_KEY else 'No configurado'}")
+print(f"🔵 API Secret: {'Configurado' if CLOUDINARY_API_SECRET else 'No configurado'}")
+print("=" * 50)
+
 if CLOUDINARY_CLOUD_NAME and CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET:
-    cloudinary.config(
-        cloud_name=CLOUDINARY_CLOUD_NAME,
-        api_key=CLOUDINARY_API_KEY,
-        api_secret=CLOUDINARY_API_SECRET,
-        secure=True
-    )
-    CLOUDINARY_CONFIGURED = True
+    try:
+        cloudinary.config(
+            cloud_name=CLOUDINARY_CLOUD_NAME,
+            api_key=CLOUDINARY_API_KEY,
+            api_secret=CLOUDINARY_API_SECRET,
+            secure=True
+        )
+        CLOUDINARY_CONFIGURED = True
+        print("✅ CLOUDINARY CONFIGURADO CORRECTAMENTE")
+    except Exception as e:
+        CLOUDINARY_CONFIGURED = False
+        print(f"❌ Error al configurar Cloudinary: {str(e)}")
 else:
     CLOUDINARY_CONFIGURED = False
     print("⚠️ Cloudinary no configurado - Las imágenes se guardarán localmente")
@@ -562,7 +578,7 @@ def dashboard():
         return render_template('dashboard.html', usuario=current_user, now=datetime.now)
 
 # ============================================================================
-# RUTAS DE RECOLECCIÓN DE DATOS
+# RUTAS DE RECOLECCIÓN DE DATOS - CORREGIDAS
 # ============================================================================
 
 @app.route('/recoleccion')
@@ -592,7 +608,7 @@ def recoleccion():
 @app.route('/api/recoleccion', methods=['POST'])
 @login_required
 def api_crear_recoleccion():
-    """API para crear nuevo registro de recolección"""
+    """API para crear nuevo registro de recolección - CORREGIDA"""
     try:
         data = request.get_json()
         
@@ -602,11 +618,30 @@ def api_crear_recoleccion():
                 return jsonify({'error': 'Email inválido'}), 400
             data['correo'] = email_validado
         
+        # CORRECCIÓN: Manejar valores vacíos para campos enteros
+        municipio_id = data.get('municipio_id')
+        if municipio_id == '' or municipio_id is None:
+            municipio_id = None
+        else:
+            try:
+                municipio_id = int(municipio_id)
+            except (ValueError, TypeError):
+                municipio_id = None
+        
+        institucion_id = data.get('institucion_id')
+        if institucion_id == '' or institucion_id is None:
+            institucion_id = None
+        else:
+            try:
+                institucion_id = int(institucion_id)
+            except (ValueError, TypeError):
+                institucion_id = None
+        
         nuevo_registro = RecoleccionDato(
             ficha_toma_registro=data.get('ficha_toma_registro'),
             asesor=data.get('asesor'),
-            municipio_id=data.get('municipio_id'),
-            institucion_id=data.get('institucion_id'),
+            municipio_id=municipio_id,
+            institucion_id=institucion_id,
             realizador_nombre=data.get('realizador_nombre'),
             realizador_apellidos=data.get('realizador_apellidos'),
             matricula_documento=data.get('matricula_documento'),
@@ -636,7 +671,7 @@ def api_crear_recoleccion():
     except Exception as e:
         db.session.rollback()
         app.logger.error(f"Error al crear registro: {str(e)}")
-        return jsonify({'error': 'Error al crear el registro'}), 500
+        return jsonify({'error': f'Error al crear el registro: {str(e)}'}), 500
 
 @app.route('/api/recoleccion/<int:id>', methods=['PUT', 'GET'])
 @login_required
@@ -657,6 +692,25 @@ def api_obtener_recoleccion(id):
                 return jsonify({'error': 'Email inválido'}), 400
             data['correo'] = email_validado
         
+        # CORRECCIÓN: Manejar valores vacíos para campos enteros en actualización
+        if 'municipio_id' in data:
+            if data['municipio_id'] == '' or data['municipio_id'] is None:
+                data['municipio_id'] = None
+            else:
+                try:
+                    data['municipio_id'] = int(data['municipio_id'])
+                except (ValueError, TypeError):
+                    data['municipio_id'] = None
+        
+        if 'institucion_id' in data:
+            if data['institucion_id'] == '' or data['institucion_id'] is None:
+                data['institucion_id'] = None
+            else:
+                try:
+                    data['institucion_id'] = int(data['institucion_id'])
+                except (ValueError, TypeError):
+                    data['institucion_id'] = None
+        
         for key, value in data.items():
             if hasattr(registro, key):
                 setattr(registro, key, value)
@@ -672,7 +726,7 @@ def api_obtener_recoleccion(id):
     except Exception as e:
         db.session.rollback()
         app.logger.error(f"Error al actualizar registro: {str(e)}")
-        return jsonify({'error': 'Error al actualizar el registro'}), 500
+        return jsonify({'error': f'Error al actualizar el registro: {str(e)}'}), 500
 
 # ============================================================================
 # RUTAS DE FERIAS - CON SOPORTE PARA CLOUDINARY
