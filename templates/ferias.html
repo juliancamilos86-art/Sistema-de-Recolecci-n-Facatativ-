@@ -27,12 +27,15 @@
     </div>
 
     <!-- Mensaje de Cloudinary -->
-    {% if not cloudinary_configurado %}
-    <div class="alert alert-info mb-4">
+    <div class="alert alert-success mb-4" id="cloudinaryAlert" {% if cloudinary_configurado %}style="display: block;"{% else %}style="display: none;"{% endif %}>
+        <i class="fas fa-cloud-upload-alt me-2"></i>
+        <strong>Cloudinary activado:</strong> Las imágenes se suben a la nube correctamente.
+    </div>
+    
+    <div class="alert alert-info mb-4" id="localAlert" {% if not cloudinary_configurado %}style="display: block;"{% else %}style="display: none;"{% endif %}>
         <i class="fas fa-info-circle me-2"></i>
         Cloudinary no está configurado. Las imágenes se guardarán localmente en la carpeta uploads.
     </div>
-    {% endif %}
 
     <!-- Grid de Ferias -->
     <div class="row" id="feriasContainer">
@@ -72,7 +75,7 @@
                     <p class="text-muted small">{{ feria.descripcion|truncate(100) }}</p>
                 </div>
                 <div class="card-footer bg-transparent">
-                    <button class="btn btn-sm btn-outline-success w-100" onclick='abrirGaleria({{ feria.id }}, {{ feria.nombre|tojson|safe }})'>
+                    <button class="btn btn-sm btn-outline-success w-100" onclick='abrirGaleria({{ feria.id }}, {{ feria.nombre|tojson }})'>
                         <i class="fas fa-images me-2"></i>
                         Ver Galería
                     </button>
@@ -195,6 +198,9 @@
                                      role="progressbar" style="width: 0%">0%</div>
                             </div>
                         </div>
+                        
+                        <!-- Mensaje de éxito/error -->
+                        <div id="uploadMessage" class="mt-3" style="display: none;"></div>
                     </div>
                 </div>
                 
@@ -233,15 +239,27 @@
 </div>
 
 <script>
+// Variables globales
 let feriaActual = null;
+
+// Función para escapar strings (seguridad)
+function escapeHtml(unsafe) {
+    return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
 
 function abrirGaleria(feriaId, nombreFeria) {
     feriaActual = feriaId;
     document.getElementById('feriaId').value = feriaId;
-    document.getElementById('galeriaTitulo').innerHTML = `<i class="fas fa-images me-2"></i>Galería - ${nombreFeria}`;
+    document.getElementById('galeriaTitulo').innerHTML = `<i class="fas fa-images me-2"></i>Galería - ${escapeHtml(nombreFeria)}`;
     document.getElementById('fileInput').value = '';
     document.getElementById('descripcion').value = '';
     document.getElementById('progressContainer').style.display = 'none';
+    document.getElementById('uploadMessage').style.display = 'none';
     
     cargarImagenes(feriaId);
     
@@ -279,6 +297,7 @@ function guardarFeria() {
 function subirImagenes() {
     const fileInput = document.getElementById('fileInput');
     const descripcion = document.getElementById('descripcion').value;
+    const messageDiv = document.getElementById('uploadMessage');
     
     if (!fileInput.files || fileInput.files.length === 0) {
         toastr.warning('Selecciona al menos una imagen');
@@ -293,10 +312,12 @@ function subirImagenes() {
         formData.append('descripcion', descripcion);
     }
     
+    // Mostrar progreso
     document.getElementById('progressContainer').style.display = 'block';
     const progressBar = document.getElementById('progressBar');
     progressBar.style.width = '0%';
     progressBar.textContent = '0%';
+    messageDiv.style.display = 'none';
     
     fetch(`/api/ferias/${feriaActual}/imagenes`, {
         method: 'POST',
@@ -311,12 +332,21 @@ function subirImagenes() {
         progressBar.textContent = '100%';
         
         if (data.error) {
+            messageDiv.className = 'alert alert-danger';
+            messageDiv.innerHTML = `<i class="fas fa-exclamation-circle me-2"></i>${data.error}`;
+            messageDiv.style.display = 'block';
             toastr.error(data.error);
         } else {
+            // Mostrar mensaje de éxito
+            messageDiv.className = 'alert alert-success';
+            messageDiv.innerHTML = `<i class="fas fa-check-circle me-2"></i>${data.message}`;
+            messageDiv.style.display = 'block';
             toastr.success(data.message);
+            
+            // ACTUALIZAR LA GALERÍA INMEDIATAMENTE
             cargarImagenes(feriaActual);
             
-            // Actualizar contador en la tarjeta
+            // Actualizar contador en la tarjeta de la feria
             const contadorSpan = document.querySelector(`#contador-${feriaActual} .contador-valor`);
             if (contadorSpan) {
                 const totalActual = parseInt(contadorSpan.textContent) || 0;
@@ -328,6 +358,7 @@ function subirImagenes() {
             document.getElementById('descripcion').value = '';
         }
         
+        // Ocultar progreso después de 2 segundos
         setTimeout(() => {
             document.getElementById('progressContainer').style.display = 'none';
             progressBar.style.width = '0%';
@@ -336,6 +367,9 @@ function subirImagenes() {
     })
     .catch(error => {
         console.error('Error:', error);
+        messageDiv.className = 'alert alert-danger';
+        messageDiv.innerHTML = `<i class="fas fa-exclamation-circle me-2"></i>Error al subir imágenes: ${error.message}`;
+        messageDiv.style.display = 'block';
         toastr.error('Error al subir imágenes');
         document.getElementById('progressContainer').style.display = 'none';
     });
@@ -351,6 +385,9 @@ function cargarImagenes(feriaId) {
             if (data.imagenes && data.imagenes.length > 0) {
                 grid.innerHTML = '';
                 data.imagenes.forEach(imagen => {
+                    const fecha = imagen.fecha ? new Date(imagen.fecha).toLocaleDateString() : 'Fecha desconocida';
+                    const usuario = imagen.usuario || 'N/A';
+                    
                     const col = document.createElement('div');
                     col.className = 'col-md-3 mb-3';
                     col.innerHTML = `
@@ -359,8 +396,8 @@ function cargarImagenes(feriaId) {
                                  onclick="verImagen('${imagen.url}')">
                             <div class="card-body p-2">
                                 <p class="small text-muted mb-1">
-                                    <i class="fas fa-user me-1"></i>${imagen.usuario || 'N/A'}<br>
-                                    <i class="fas fa-clock me-1"></i>${new Date(imagen.fecha).toLocaleDateString()}
+                                    <i class="fas fa-user me-1"></i>${escapeHtml(usuario)}<br>
+                                    <i class="fas fa-clock me-1"></i>${fecha}
                                 </p>
                                 <button class="btn btn-sm btn-danger w-100" onclick="eliminarImagen('${imagen.public_id}', ${feriaId})">
                                     <i class="fas fa-trash"></i> Eliminar
@@ -375,6 +412,7 @@ function cargarImagenes(feriaId) {
                     <div class="col-12 text-center py-4">
                         <i class="fas fa-images fa-4x text-muted mb-3"></i>
                         <p class="text-muted">No hay imágenes en esta feria</p>
+                        <p class="text-muted small">Sube imágenes usando el formulario de arriba</p>
                     </div>
                 `;
             }
@@ -385,6 +423,7 @@ function cargarImagenes(feriaId) {
                 <div class="col-12 text-center py-4">
                     <i class="fas fa-exclamation-circle fa-4x text-danger mb-3"></i>
                     <p class="text-danger">Error al cargar imágenes</p>
+                    <p class="text-muted small">${error.message}</p>
                 </div>
             `;
         });
@@ -436,5 +475,15 @@ function eliminarImagen(publicId, feriaId) {
         }
     });
 }
+
+// Inicializar tooltips si existen
+document.addEventListener('DOMContentLoaded', function() {
+    if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.map(function(tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    }
+});
 </script>
 {% endblock %}
