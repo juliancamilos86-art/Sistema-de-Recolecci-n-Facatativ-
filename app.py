@@ -187,9 +187,10 @@ class Usuario(UserMixin, db.Model):
     ultimo_acceso = db.Column(db.DateTime)
     fecha_registro = db.Column(db.DateTime, default=datetime.utcnow)
     
-    registros = db.relationship('RecoleccionDato', backref='usuario_registro', lazy=True)
-    imagenes_subidas = db.relationship('FeriaImagen', backref='usuario_subida', lazy=True)
-    importaciones = db.relationship('ArchivoImportado', backref='usuario_importo', lazy=True)
+    # RELACIONES CORREGIDAS
+    registros = db.relationship('RecoleccionDato', back_populates='usuario_registro', lazy=True)
+    imagenes_subidas = db.relationship('FeriaImagen', back_populates='usuario_subida', lazy=True)
+    importaciones = db.relationship('ArchivoImportado', back_populates='usuario_importo', lazy=True)
     
     def is_admin(self):
         return self.rol == 'admin'
