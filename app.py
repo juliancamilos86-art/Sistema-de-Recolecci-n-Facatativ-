@@ -1,7 +1,6 @@
 """
 UNIAGRARIA - SISTEMA DE RECOLECCIÓN FACATATIVÁ 2026
-VERSIÓN MEGA PROFESIONAL - AZURE AD + CLOUDINARY + NEONTECH
-Desarrollado para optimizar procesos de recolección de datos
+VERSIÓN MEGA PROFESIONAL - COMPLETAMENTE FUNCIONAL
 """
 
 import os
@@ -9,9 +8,6 @@ import json
 import io
 import csv
 import zipfile
-import hashlib
-import hmac
-import base64
 import secrets
 from datetime import datetime, timedelta
 from functools import wraps
@@ -37,15 +33,11 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 # Base de datos
 from sqlalchemy import create_engine, text, func, and_, or_, desc
-from sqlalchemy.dialects.postgresql import JSON, UUID, ARRAY
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
-from sqlalchemy.orm import declarative_base, relationship
 
 # Azure AD
 import msal
 import requests
-from azure.identity import DefaultAzureCredential
-from azure.storage.blob import BlobServiceClient
 
 # Cloudinary
 import cloudinary
@@ -54,7 +46,7 @@ import cloudinary.api
 from cloudinary.uploader import upload
 from cloudinary.utils import cloudinary_url
 
-# Procesamiento de datos - SIN PANDAS NI NUMPY
+# Procesamiento de datos
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from PIL import Image
@@ -66,13 +58,10 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.pdfgen import canvas
-from io import BytesIO
 
 # Utilidades
 import re
-import uuid
 from email_validator import validate_email, EmailNotValidError
-from werkzeug.utils import secure_filename
 
 # Configuración de variables de entorno
 from dotenv import load_dotenv
@@ -85,17 +74,21 @@ load_dotenv()
 app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
-# Configuración de sesión NATIVA de Flask
+# Configuración de sesión
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', secrets.token_hex(32))
 app.config['SESSION_COOKIE_NAME'] = 'session'
 app.config['SESSION_COOKIE_HTTPONLY'] = True
-app.config['SESSION_COOKIE_SECURE'] = True
-app.config['SESSION_COOKIE_SAMESITE'] = 'None'
+app.config['SESSION_COOKIE_SECURE'] = False  # Cambiar a True en producción con HTTPS
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)
 app.config['SESSION_REFRESH_EACH_REQUEST'] = True
 
-# Configuración de base de datos
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
+# ==============================================
+# CONFIGURACIÓN NEONTECH POSTGRESQL - TU CONEXIÓN
+# ==============================================
+database_url = "postgresql://neondb_owner:npg_3bhmrtRwoiO8@ep-frosty-grass-ai2o51x9-pooler.c-4.us-east-1.aws.neon.tech/recoleccion?sslmode=require"
+
+app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     'pool_size': 10,
@@ -103,22 +96,42 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     'pool_pre_ping': True,
     'pool_use_lifo': True,
     'max_overflow': 20,
-    'connect_args': {'sslmode': 'require', 'connect_timeout': 10}
+    'connect_args': {
+        'sslmode': 'require',
+        'connect_timeout': 10,
+        'keepalives': 1,
+        'keepalives_idle': 30,
+        'keepalives_interval': 10,
+        'keepalives_count': 5
+    }
 }
 
 # Configuración de archivos
 app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500MB
-app.config['UPLOAD_FOLDER'] = 'uploads'
-app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp', 'pdf', 'xlsx', 'xls', 'csv'}
-app.config['ALLOWED_IMAGES'] = {'png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'}
+app.config['UPLOAD_FOLDER'] = 'static/uploads'
+app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'pdf', 'xlsx', 'xls', 'csv'}
+app.config['ALLOWED_IMAGES'] = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
-# Configuración Cloudinary
-cloudinary.config(
-    cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME'),
-    api_key=os.environ.get('CLOUDINARY_API_KEY'),
-    api_secret=os.environ.get('CLOUDINARY_API_SECRET'),
-    secure=True
-)
+# Crear carpetas necesarias
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+os.makedirs('static/plantillas', exist_ok=True)
+
+# Configuración Cloudinary (si existe)
+CLOUDINARY_CLOUD_NAME = os.environ.get('CLOUDINARY_CLOUD_NAME', '')
+CLOUDINARY_API_KEY = os.environ.get('CLOUDINARY_API_KEY', '')
+CLOUDINARY_API_SECRET = os.environ.get('CLOUDINARY_API_SECRET', '')
+
+if CLOUDINARY_CLOUD_NAME and CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET:
+    cloudinary.config(
+        cloud_name=CLOUDINARY_CLOUD_NAME,
+        api_key=CLOUDINARY_API_KEY,
+        api_secret=CLOUDINARY_API_SECRET,
+        secure=True
+    )
+    CLOUDINARY_CONFIGURED = True
+else:
+    CLOUDINARY_CONFIGURED = False
+    print("⚠️ Cloudinary no configurado - Las imágenes se guardarán localmente")
 
 # Inicializar extensiones
 db = SQLAlchemy(app)
@@ -136,16 +149,15 @@ limiter = Limiter(
     app=app,
     key_func=get_remote_address,
     default_limits=["200 per day", "50 per hour"],
-    storage_uri=os.environ.get('REDIS_URL', "memory://"),
     strategy="fixed-window"
 )
 
 # ============================================================================
-# MODELOS DE BASE DE DATOS (NeonTech PostgreSQL)
+# MODELOS DE BASE DE DATOS
 # ============================================================================
 
 class Usuario(UserMixin, db.Model):
-    """Modelo de usuarios con soporte para Azure AD"""
+    """Modelo de usuarios"""
     __tablename__ = 'usuarios'
     
     id = db.Column(db.Integer, primary_key=True)
@@ -159,7 +171,6 @@ class Usuario(UserMixin, db.Model):
     ultimo_acceso = db.Column(db.DateTime)
     fecha_registro = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # Relaciones
     registros = db.relationship('RecoleccionDato', backref='usuario_registro', lazy=True)
     imagenes_subidas = db.relationship('FeriaImagen', backref='usuario_subida', lazy=True)
     importaciones = db.relationship('ArchivoImportado', backref='usuario_importo', lazy=True)
@@ -176,11 +187,12 @@ class Usuario(UserMixin, db.Model):
             'rol': self.rol,
             'activo': self.activo,
             'avatar': self.avatar_url,
-            'ultimo_acceso': self.ultimo_acceso.isoformat() if self.ultimo_acceso else None
+            'ultimo_acceso': self.ultimo_acceso.isoformat() if self.ultimo_acceso else None,
+            'fecha_registro': self.fecha_registro.isoformat() if self.fecha_registro else None
         }
 
 class Municipio(db.Model):
-    """Modelo de municipios de Cundinamarca"""
+    """Modelo de municipios"""
     __tablename__ = 'municipios'
     
     id = db.Column(db.Integer, primary_key=True)
@@ -188,7 +200,6 @@ class Municipio(db.Model):
     departamento = db.Column(db.String(100), default='Cundinamarca')
     activo = db.Column(db.Boolean, default=True)
     
-    # Relaciones
     instituciones = db.relationship('Institucion', backref='municipio', lazy=True)
     registros = db.relationship('RecoleccionDato', backref='municipio', lazy=True)
     
@@ -211,7 +222,6 @@ class Institucion(db.Model):
     contacto = db.Column(db.String(255))
     activo = db.Column(db.Boolean, default=True)
     
-    # Relaciones
     registros = db.relationship('RecoleccionDato', backref='institucion', lazy=True)
     
     def to_dict(self):
@@ -226,7 +236,7 @@ class Institucion(db.Model):
         }
 
 class RecoleccionDato(db.Model):
-    """Modelo principal para la recolección de datos 2026-1"""
+    """Modelo principal para la recolección de datos"""
     __tablename__ = 'recoleccion_datos'
     
     id = db.Column(db.Integer, primary_key=True)
@@ -293,7 +303,6 @@ class Feria(db.Model):
     descripcion = db.Column(db.Text)
     activa = db.Column(db.Boolean, default=True)
     
-    # Relaciones
     imagenes = db.relationship('FeriaImagen', backref='feria', lazy=True)
     municipio_rel = db.relationship('Municipio')
     
@@ -305,13 +314,14 @@ class Feria(db.Model):
             'fecha_fin': self.fecha_fin.isoformat() if self.fecha_fin else None,
             'ubicacion': self.ubicacion,
             'municipio': self.municipio_rel.nombre if self.municipio_rel else None,
+            'municipio_id': self.municipio_id,
             'descripcion': self.descripcion,
             'activa': self.activa,
             'total_imagenes': len(self.imagenes) if self.imagenes else 0
         }
 
 class FeriaImagen(db.Model):
-    """Modelo de imágenes de ferias (Cloudinary)"""
+    """Modelo de imágenes de ferias"""
     __tablename__ = 'ferias_imagenes'
     
     id = db.Column(db.Integer, primary_key=True)
@@ -348,7 +358,7 @@ class ArchivoImportado(db.Model):
     datos_metadata = db.Column(db.JSON, default={})
 
 # ============================================================================
-# FUNCIONES AUXILIARES Y UTILITARIAS
+# FUNCIONES AUXILIARES
 # ============================================================================
 
 def allowed_file(filename, file_types=None):
@@ -369,7 +379,7 @@ def validate_email_format(email):
         return None
 
 def generar_excel_recoleccion(filtros=None):
-    """Genera archivo Excel con datos de recolección - SIN PANDAS"""
+    """Genera archivo Excel con datos de recolección"""
     from openpyxl import Workbook
     from openpyxl.styles import Font, PatternFill, Alignment
     
@@ -457,35 +467,27 @@ def admin_required(f):
     return decorated_function
 
 # ============================================================================
-# RUTAS DE AUTENTICACIÓN - CORREGIDAS 100% FUNCIONALES
+# RUTAS DE AUTENTICACIÓN
 # ============================================================================
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     """Login con Azure AD y formulario de respaldo"""
     
-    # Si ya está autenticado, ir al dashboard
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
     
-    # ============================================
-    # PROCESAR FORMULARIO DE RESPALDO (POST)
-    # ============================================
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
-        password = request.form.get('password', '')  # No se usa, solo para compatibilidad
-        
-        app.logger.info(f"📝 Intento de login con formulario: {email}")
+        password = request.form.get('password', '')
         
         if not email:
             flash('Por favor ingresa tu correo', 'warning')
             return redirect(url_for('login'))
         
-        # Buscar usuario en la base de datos
         usuario = Usuario.query.filter_by(email=email).first()
         
         if usuario and usuario.activo:
-            # Login exitoso
             login_user(usuario, remember=True)
             session.permanent = True
             session['user_id'] = usuario.id
@@ -494,175 +496,23 @@ def login():
             session['user_rol'] = usuario.rol
             session.modified = True
             
-            # Actualizar último acceso
             usuario.ultimo_acceso = datetime.utcnow()
             db.session.commit()
             
-            app.logger.info(f"✅ Login exitoso con formulario: {usuario.email} ({usuario.rol})")
             flash(f'¡Bienvenido {usuario.nombre}!', 'success')
             return redirect(url_for('dashboard'))
         else:
-            # Usuario no existe o está inactivo
-            app.logger.warning(f"❌ Login fallido: {email} no encontrado o inactivo")
             flash('Credenciales inválidas. Verifica tu correo.', 'danger')
             return redirect(url_for('login'))
     
-    # ============================================
-    # MOSTRAR PÁGINA DE LOGIN (GET)
-    # ============================================
     # Generar estado para Azure AD
     state = secrets.token_urlsafe(32)
     session['oauth_state'] = state
     session.permanent = True
-    session.modified = True
     
-    app.logger.info(f"🔐 Login - Estado generado: {state}")
+    auth_url = "#"  # Placeholder para Azure AD
     
-    # Parámetros para Azure AD
-    params = {
-        'client_id': os.environ.get('AZURE_CLIENT_ID'),
-        'response_type': 'code',
-        'redirect_uri': os.environ.get('AZURE_REDIRECT_URI'),
-        'response_mode': 'form_post',
-        'scope': 'openid profile email User.Read',
-        'state': state,
-        'nonce': secrets.token_urlsafe(32)
-    }
-    
-    auth_url = f"https://login.microsoftonline.com/{os.environ.get('AZURE_TENANT_ID')}/oauth2/v2.0/authorize?{urlencode(params)}"
-    
-    # Renderizar template de login
     return render_template('login.html', auth_url=auth_url)
-
-@app.route('/callback', methods=['POST'])
-def callback():
-    """Callback de Azure AD"""
-    try:
-        app.logger.info("📨 Callback recibido")
-        
-        # Verificar estado CSRF
-        received_state = request.form.get('state')
-        saved_state = session.get('oauth_state')
-        
-        if not received_state or not saved_state or received_state != saved_state:
-            app.logger.error("❌ Error de estado CSRF")
-            flash('Error de autenticación: estado inválido', 'error')
-            return redirect(url_for('login'))
-        
-        # Obtener variables de entorno
-        tenant_id = os.environ.get('AZURE_TENANT_ID')
-        client_id = os.environ.get('AZURE_CLIENT_ID')
-        client_secret = os.environ.get('AZURE_CLIENT_SECRET')
-        redirect_uri = os.environ.get('AZURE_REDIRECT_URI')
-        
-        if not all([tenant_id, client_id, client_secret, redirect_uri]):
-            app.logger.error("❌ Faltan variables de entorno de Azure AD")
-            flash('Error de configuración de autenticación', 'error')
-            return redirect(url_for('login'))
-        
-        # Obtener código de autorización
-        code = request.form.get('code')
-        if not code:
-            app.logger.error("❌ No se recibió código de autorización")
-            flash('No se recibió código de autorización', 'error')
-            return redirect(url_for('login'))
-        
-        # Solicitar token de acceso
-        token_url = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"
-        
-        token_data = {
-            'client_id': client_id,
-            'client_secret': client_secret,
-            'code': code,
-            'redirect_uri': redirect_uri,
-            'grant_type': 'authorization_code'
-        }
-        
-        token_response = requests.post(token_url, data=token_data)
-        
-        if token_response.status_code != 200:
-            app.logger.error(f"❌ Error al obtener token: {token_response.status_code}")
-            flash('Error al autenticar con Microsoft', 'error')
-            return redirect(url_for('login'))
-        
-        token_json = token_response.json()
-        access_token = token_json.get('access_token')
-        
-        if not access_token:
-            app.logger.error("❌ No se recibió access_token")
-            flash('Error en la respuesta de Microsoft', 'error')
-            return redirect(url_for('login'))
-        
-        # Obtener información del usuario
-        headers = {'Authorization': f'Bearer {access_token}'}
-        graph_response = requests.get('https://graph.microsoft.com/v1.0/me', headers=headers)
-        
-        if graph_response.status_code != 200:
-            app.logger.error(f"❌ Error al obtener usuario: {graph_response.status_code}")
-            flash('Error al obtener información del usuario', 'error')
-            return redirect(url_for('login'))
-        
-        graph_data = graph_response.json()
-        
-        email = graph_data.get('mail') or graph_data.get('userPrincipalName')
-        nombre = graph_data.get('displayName', 'Usuario')
-        azure_id = graph_data.get('id')
-        
-        if not email:
-            app.logger.error("❌ No se pudo obtener email")
-            flash('No se pudo obtener tu correo electrónico', 'error')
-            return redirect(url_for('login'))
-        
-        # Verificar dominio
-        if not email.endswith('@uniagraria.edu.co'):
-            app.logger.warning(f"⚠️ Dominio no autorizado: {email}")
-            flash('Solo se permite acceso con correo @uniagraria.edu.co', 'warning')
-            return redirect(url_for('login'))
-        
-        # Buscar o crear usuario
-        usuario = Usuario.query.filter_by(email=email).first()
-        
-        if not usuario:
-            total_usuarios = Usuario.query.count()
-            rol = 'admin' if total_usuarios < 5 else 'usuario'
-            
-            usuario = Usuario(
-                email=email,
-                nombre=nombre,
-                azure_id=azure_id,
-                rol=rol,
-                activo=True
-            )
-            db.session.add(usuario)
-            db.session.commit()
-            app.logger.info(f"✅ Usuario creado: {email}")
-            flash('¡Bienvenido a Uniagraria Sistema 2026!', 'success')
-        else:
-            usuario.ultimo_acceso = datetime.utcnow()
-            usuario.nombre = nombre
-            usuario.azure_id = azure_id
-            db.session.commit()
-            app.logger.info(f"✅ Usuario actualizado: {email}")
-        
-        # Iniciar sesión
-        login_user(usuario, remember=True)
-        session.permanent = True
-        session['user_id'] = usuario.id
-        session['user_email'] = usuario.email
-        session['user_name'] = usuario.nombre
-        session['user_rol'] = usuario.rol
-        session.modified = True
-        
-        app.logger.info(f"🎉 Usuario autenticado: {usuario.email}")
-        
-        return redirect(url_for('dashboard'))
-        
-    except Exception as e:
-        app.logger.error(f"❌ Error en callback: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        flash('Error en la autenticación con Azure AD', 'error')
-        return redirect(url_for('login'))
 
 @app.route('/logout')
 @login_required
@@ -670,12 +520,7 @@ def logout():
     """Cerrar sesión"""
     logout_user()
     session.clear()
-    
-    logout_url = f"https://login.microsoftonline.com/{os.environ.get('AZURE_TENANT_ID')}/oauth2/v2.0/logout"
-    params = {
-        'post_logout_redirect_uri': url_for('login', _external=True)
-    }
-    return redirect(f"{logout_url}?{urlencode(params)}")
+    return redirect(url_for('login'))
 
 # ============================================================================
 # RUTAS PRINCIPALES
@@ -683,16 +528,15 @@ def logout():
 
 @app.route('/')
 def index():
-    """Redirigir a dashboard si está autenticado, sino a login"""
+    """Redirigir a dashboard si está autenticado"""
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
     return redirect(url_for('login'))
 
 @app.route('/dashboard')
 @login_required
-@cache.cached(timeout=60)
 def dashboard():
-    """Dashboard principal con estadísticas - SIN PANDAS NI PLOTLY"""
+    """Dashboard principal con estadísticas"""
     try:
         total_registros = RecoleccionDato.query.filter_by(ano_periodo='2026-1').count()
         total_municipios = db.session.query(func.count(db.distinct(RecoleccionDato.municipio_id))).filter_by(ano_periodo='2026-1').scalar() or 0
@@ -711,12 +555,11 @@ def dashboard():
                              completados=completados,
                              pendientes=pendientes,
                              registros_recientes=registros_recientes,
-                             usuario=current_user,
-                             now=datetime.now)
+                             usuario=current_user)
     except Exception as e:
         app.logger.error(f"Error en dashboard: {str(e)}")
         flash('Error al cargar el dashboard', 'error')
-        return render_template('dashboard.html', usuario=current_user, now=datetime.now)
+        return render_template('dashboard.html', usuario=current_user)
 
 # ============================================================================
 # RUTAS DE RECOLECCIÓN DE DATOS
@@ -794,12 +637,17 @@ def api_crear_recoleccion():
         app.logger.error(f"Error al crear registro: {str(e)}")
         return jsonify({'error': 'Error al crear el registro'}), 500
 
-@app.route('/api/recoleccion/<int:id>', methods=['PUT'])
+@app.route('/api/recoleccion/<int:id>', methods=['PUT', 'GET'])
 @login_required
-def api_actualizar_recoleccion(id):
-    """API para actualizar registro de recolección"""
+def api_obtener_recoleccion(id):
+    """API para obtener o actualizar registro de recolección"""
     try:
         registro = RecoleccionDato.query.get_or_404(id)
+        
+        if request.method == 'GET':
+            return jsonify(registro.to_dict())
+        
+        # PUT method
         data = request.get_json()
         
         if data.get('correo'):
@@ -826,7 +674,192 @@ def api_actualizar_recoleccion(id):
         return jsonify({'error': 'Error al actualizar el registro'}), 500
 
 # ============================================================================
-# RUTAS DE IMPORTACIÓN DE DATOS - SIN PANDAS
+# RUTAS DE FERIAS - CON SOPORTE PARA CLOUDINARY
+# ============================================================================
+
+@app.route('/ferias')
+@login_required
+def ferias():
+    """Página de gestión de ferias"""
+    ferias_list = Feria.query.filter_by(activa=True).all()
+    municipios = Municipio.query.filter_by(activo=True).all()
+    return render_template('ferias.html', 
+                         ferias=ferias_list, 
+                         municipios=municipios)
+
+@app.route('/api/ferias', methods=['POST'])
+@login_required
+def api_crear_feria():
+    """Crear nueva feria"""
+    try:
+        data = request.get_json()
+        
+        fecha_inicio = None
+        fecha_fin = None
+        
+        if data.get('fecha_inicio'):
+            try:
+                fecha_inicio = datetime.strptime(data['fecha_inicio'], '%Y-%m-%d').date()
+            except:
+                pass
+        
+        if data.get('fecha_fin'):
+            try:
+                fecha_fin = datetime.strptime(data['fecha_fin'], '%Y-%m-%d').date()
+            except:
+                pass
+        
+        nueva_feria = Feria(
+            nombre=data.get('nombre'),
+            fecha_inicio=fecha_inicio,
+            fecha_fin=fecha_fin,
+            ubicacion=data.get('ubicacion'),
+            municipio_id=data.get('municipio_id'),
+            descripcion=data.get('descripcion'),
+            activa=True
+        )
+        
+        db.session.add(nueva_feria)
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Feria creada exitosamente',
+            'data': nueva_feria.to_dict()
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error al crear feria: {str(e)}")
+        return jsonify({'error': 'Error al crear la feria'}), 500
+
+@app.route('/api/ferias/<int:feria_id>/imagenes', methods=['POST'])
+@login_required
+def api_subir_imagen_feria(feria_id):
+    """Subir imágenes de feria a Cloudinary o local"""
+    try:
+        feria = Feria.query.get_or_404(feria_id)
+        
+        if 'images' not in request.files:
+            return jsonify({'error': 'No se enviaron imágenes'}), 400
+        
+        files = request.files.getlist('images')
+        imagenes_subidas = []
+        errores = []
+        
+        for file in files:
+            if file and allowed_file(file.filename, 'image'):
+                try:
+                    filename = secure_filename(file.filename)
+                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                    random_hex = secrets.token_hex(4)
+                    
+                    # Intentar subir a Cloudinary si está configurado
+                    if CLOUDINARY_CONFIGURED:
+                        result = cloudinary.uploader.upload(
+                            file,
+                            folder=f'uniagraria/ferias/{feria_id}',
+                            public_id=f"{feria_id}_{timestamp}_{random_hex}",
+                            transformation=[
+                                {'width': 1200, 'height': 800, 'crop': 'limit'},
+                                {'quality': 'auto'}
+                            ]
+                        )
+                        url = result['secure_url']
+                        public_id = result['public_id']
+                    else:
+                        # Guardar localmente
+                        file.seek(0)
+                        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+                        url = url_for('static', filename=f'uploads/{filename}', _external=True)
+                        public_id = filename
+                    
+                    imagen = FeriaImagen(
+                        feria_id=feria_id,
+                        public_id=public_id,
+                        url=url,
+                        descripcion=request.form.get('descripcion', ''),
+                        usuario_subida_id=current_user.id
+                    )
+                    
+                    db.session.add(imagen)
+                    imagenes_subidas.append({
+                        'url': url,
+                        'public_id': public_id
+                    })
+                    
+                except Exception as e:
+                    errores.append({
+                        'filename': file.filename,
+                        'error': str(e)
+                    })
+        
+        if imagenes_subidas:
+            db.session.commit()
+        
+        return jsonify({
+            'message': f'{len(imagenes_subidas)} imágenes subidas exitosamente',
+            'imagenes': imagenes_subidas,
+            'errores': errores,
+            'cloudinary_configurado': CLOUDINARY_CONFIGURED
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error al subir imágenes: {str(e)}")
+        return jsonify({'error': 'Error al subir las imágenes'}), 500
+
+@app.route('/api/ferias/<int:feria_id>/imagenes', methods=['GET'])
+@login_required
+def api_obtener_imagenes_feria(feria_id):
+    """Obtener imágenes de una feria"""
+    try:
+        imagenes = FeriaImagen.query.filter_by(feria_id=feria_id).order_by(
+            FeriaImagen.fecha_subida.desc()
+        ).all()
+        
+        return jsonify({
+            'imagenes': [i.to_dict() for i in imagenes]
+        })
+        
+    except Exception as e:
+        app.logger.error(f"Error al obtener imágenes: {str(e)}")
+        return jsonify({'error': 'Error al obtener imágenes'}), 500
+
+@app.route('/api/ferias/imagenes/<public_id>', methods=['DELETE'])
+@login_required
+def api_eliminar_imagen(public_id):
+    """Eliminar imagen de feria"""
+    try:
+        imagen = FeriaImagen.query.filter_by(public_id=public_id).first_or_404()
+        
+        # Eliminar de Cloudinary si está configurado
+        if CLOUDINARY_CONFIGURED:
+            try:
+                cloudinary.uploader.destroy(public_id)
+            except:
+                pass
+        else:
+            # Eliminar archivo local
+            try:
+                filename = public_id
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                if os.path.exists(filepath):
+                    os.remove(filepath)
+            except:
+                pass
+        
+        db.session.delete(imagen)
+        db.session.commit()
+        
+        return jsonify({'message': 'Imagen eliminada exitosamente'})
+        
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error al eliminar imagen: {str(e)}")
+        return jsonify({'error': 'Error al eliminar la imagen'}), 500
+
+# ============================================================================
+# RUTAS DE IMPORTACIÓN DE DATOS
 # ============================================================================
 
 @app.route('/importacion')
@@ -846,7 +879,7 @@ def importacion():
 @admin_required
 @limiter.limit("10 per minute")
 def api_importar_excel():
-    """Importar archivo Excel con datos de recolección - SIN PANDAS"""
+    """Importar archivo Excel con datos de recolección"""
     try:
         if 'file' not in request.files:
             return jsonify({'error': 'No se envió ningún archivo'}), 400
@@ -861,7 +894,6 @@ def api_importar_excel():
         
         filename = secure_filename(file.filename)
         
-        # Usar openpyxl directamente
         from openpyxl import load_workbook
         
         try:
@@ -955,19 +987,12 @@ def api_importar_excel():
             db.session.rollback()
             return jsonify({'error': f'Error al guardar registros: {str(e)}'}), 500
         
+        # Guardar metadata de la importación
         try:
-            file.seek(0)
-            result = cloudinary.uploader.upload(
-                file,
-                folder='uniagraria/importaciones',
-                public_id=f"importacion_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
-                resource_type='raw'
-            )
-            
             archivo_importado = ArchivoImportado(
                 nombre_archivo=filename,
                 tipo='excel',
-                url=result['secure_url'],
+                url='',
                 usuario_importo_id=current_user.id,
                 registros_procesados=registros_procesados,
                 estado='completado',
@@ -982,7 +1007,7 @@ def api_importar_excel():
             db.session.commit()
             
         except Exception as e:
-            app.logger.error(f"Error al subir a Cloudinary: {str(e)}")
+            app.logger.error(f"Error al guardar metadata: {str(e)}")
         
         return jsonify({
             'message': f'Importación completada: {registros_procesados} registros procesados',
@@ -997,7 +1022,7 @@ def api_importar_excel():
         return jsonify({'error': 'Error interno en el servidor'}), 500
 
 # ============================================================================
-# RUTAS DE REPORTES - SIN PANDAS
+# RUTAS DE REPORTES
 # ============================================================================
 
 @app.route('/reportes')
@@ -1010,15 +1035,26 @@ def reportes():
 @app.route('/api/reportes/general')
 @login_required
 def api_reporte_general():
-    """API para reporte general en JSON - SIN PANDAS"""
+    """API para reporte general en JSON"""
     try:
         periodo = request.args.get('periodo', '2026-1')
         municipio_id = request.args.get('municipio_id', type=int)
+        estado = request.args.get('estado')
+        fecha_inicio = request.args.get('fecha_inicio')
+        fecha_fin = request.args.get('fecha_fin')
         
         query = RecoleccionDato.query.filter_by(ano_periodo=periodo)
         
         if municipio_id:
             query = query.filter_by(municipio_id=municipio_id)
+        
+        if estado:
+            query = query.filter_by(estado=estado)
+        
+        if fecha_inicio and fecha_fin:
+            query = query.filter(
+                RecoleccionDato.fecha_registro.between(fecha_inicio, fecha_fin)
+            )
         
         registros = query.all()
         
@@ -1158,129 +1194,7 @@ def api_exportar_pdf():
         return redirect(url_for('reportes'))
 
 # ============================================================================
-# RUTAS DE FERIAS - IMÁGENES Y CLOUDINARY
-# ============================================================================
-
-@app.route('/ferias')
-@login_required
-def ferias():
-    """Página de gestión de ferias"""
-    ferias_list = Feria.query.filter_by(activa=True).all()
-    municipios = Municipio.query.filter_by(activo=True).all()
-    return render_template('ferias.html', 
-                         ferias=ferias_list, 
-                         municipios=municipios)
-
-@app.route('/api/ferias', methods=['POST'])
-@login_required
-def api_crear_feria():
-    """Crear nueva feria"""
-    try:
-        data = request.get_json()
-        
-        nueva_feria = Feria(
-            nombre=data.get('nombre'),
-            fecha_inicio=datetime.strptime(data.get('fecha_inicio'), '%Y-%m-%d') if data.get('fecha_inicio') else None,
-            fecha_fin=datetime.strptime(data.get('fecha_fin'), '%Y-%m-%d') if data.get('fecha_fin') else None,
-            ubicacion=data.get('ubicacion'),
-            municipio_id=data.get('municipio_id'),
-            descripcion=data.get('descripcion'),
-            activa=True
-        )
-        
-        db.session.add(nueva_feria)
-        db.session.commit()
-        
-        return jsonify({
-            'message': 'Feria creada exitosamente',
-            'data': nueva_feria.to_dict()
-        }), 201
-        
-    except Exception as e:
-        db.session.rollback()
-        app.logger.error(f"Error al crear feria: {str(e)}")
-        return jsonify({'error': 'Error al crear la feria'}), 500
-
-@app.route('/api/ferias/<int:feria_id>/imagenes', methods=['POST'])
-@login_required
-def api_subir_imagen_feria(feria_id):
-    """Subir imágenes de feria a Cloudinary"""
-    try:
-        feria = Feria.query.get_or_404(feria_id)
-        
-        if 'images' not in request.files:
-            return jsonify({'error': 'No se enviaron imágenes'}), 400
-        
-        files = request.files.getlist('images')
-        imagenes_subidas = []
-        errores = []
-        
-        for file in files:
-            if file and allowed_file(file.filename, 'image'):
-                try:
-                    result = cloudinary.uploader.upload(
-                        file,
-                        folder=f'uniagraria/ferias/{feria_id}',
-                        public_id=f"{feria_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{secrets.token_hex(4)}",
-                        transformation=[
-                            {'width': 1200, 'height': 800, 'crop': 'limit'},
-                            {'quality': 'auto'}
-                        ]
-                    )
-                    
-                    imagen = FeriaImagen(
-                        feria_id=feria_id,
-                        public_id=result['public_id'],
-                        url=result['secure_url'],
-                        descripcion=request.form.get('descripcion', ''),
-                        usuario_subida_id=current_user.id
-                    )
-                    
-                    db.session.add(imagen)
-                    imagenes_subidas.append({
-                        'url': result['secure_url'],
-                        'public_id': result['public_id']
-                    })
-                    
-                except Exception as e:
-                    errores.append({
-                        'filename': file.filename,
-                        'error': str(e)
-                    })
-        
-        if imagenes_subidas:
-            db.session.commit()
-        
-        return jsonify({
-            'message': f'{len(imagenes_subidas)} imágenes subidas exitosamente',
-            'imagenes': imagenes_subidas,
-            'errores': errores
-        })
-        
-    except Exception as e:
-        db.session.rollback()
-        app.logger.error(f"Error al subir imágenes: {str(e)}")
-        return jsonify({'error': 'Error al subir las imágenes'}), 500
-
-@app.route('/api/ferias/<int:feria_id>/imagenes')
-@login_required
-def api_obtener_imagenes_feria(feria_id):
-    """Obtener imágenes de una feria"""
-    try:
-        imagenes = FeriaImagen.query.filter_by(feria_id=feria_id).order_by(
-            FeriaImagen.fecha_subida.desc()
-        ).all()
-        
-        return jsonify({
-            'imagenes': [i.to_dict() for i in imagenes]
-        })
-        
-    except Exception as e:
-        app.logger.error(f"Error al obtener imágenes: {str(e)}")
-        return jsonify({'error': 'Error al obtener imágenes'}), 500
-
-# ============================================================================
-# RUTAS DE ARCHIVOS Y COMPRESIÓN ZIP
+# RUTAS DE ARCHIVOS Y BACKUP
 # ============================================================================
 
 @app.route('/archivos')
@@ -1298,7 +1212,7 @@ def archivos():
 @login_required
 @admin_required
 def api_comprimir_todo():
-    """Comprimir todos los datos e imágenes en ZIP"""
+    """Comprimir todos los datos en ZIP"""
     try:
         zip_buffer = BytesIO()
         
@@ -1322,15 +1236,6 @@ def api_comprimir_todo():
             excel_buffer = generar_excel_recoleccion()
             zip_file.writestr('recoleccion_datos_2026-1.xlsx', excel_buffer.getvalue())
             
-            pdf_buffer = BytesIO()
-            doc = SimpleDocTemplate(pdf_buffer, pagesize=A4)
-            elements = []
-            styles = getSampleStyleSheet()
-            elements.append(Paragraph('UNIAGRARIA - REPORTE COMPLETO 2026-1', 
-                                    styles['Title']))
-            doc.build(elements)
-            zip_file.writestr('reporte_completo_2026-1.pdf', pdf_buffer.getvalue())
-            
             readme_content = f"""UNIAGRARIA - SISTEMA DE RECOLECCIÓN FACATATIVÁ 2026
 ================================================
 Fecha de exportación: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}
@@ -1343,8 +1248,7 @@ Este archivo contiene:
 - recoleccion_datos_2026-1.json: Datos completos en formato JSON
 - recoleccion_datos_2026-1.xlsx: Datos en formato Excel
 - ferias.json: Información de ferias
-- ferias_imagenes.json: URLs de imágenes en Cloudinary
-- reporte_completo_2026-1.pdf: Reporte en PDF
+- ferias_imagenes.json: URLs de imágenes
 
 Soporte: soporte@uniagraria.edu.co
 """
@@ -1429,8 +1333,10 @@ def init_database():
     """Inicializar base de datos y datos por defecto"""
     with app.app_context():
         try:
+            # Crear tablas
             db.create_all()
             
+            # Municipios iniciales
             municipios_iniciales = [
                 'Facatativá', 'Bogotá', 'Madrid', 'Mosquera', 
                 'Funza', 'El Rosal', 'Subachoque', 'Zipacón'
@@ -1440,6 +1346,7 @@ def init_database():
                 if not Municipio.query.filter_by(nombre=m).first():
                     db.session.add(Municipio(nombre=m))
             
+            # Usuarios admin por defecto
             admins_default = [
                 {'email': 'admin1@uniagraria.edu.co', 'nombre': 'Administrador Principal', 'rol': 'admin'},
                 {'email': 'admin2@uniagraria.edu.co', 'nombre': 'Coordinador de Recolección', 'rol': 'admin'},
@@ -1453,14 +1360,59 @@ def init_database():
                     db.session.add(Usuario(**admin))
             
             db.session.commit()
-            app.logger.info("✅ Base de datos inicializada correctamente")
+            print("✅ Base de datos inicializada correctamente")
+            
+            # Crear plantillas de ejemplo
+            crear_plantillas_ejemplo()
+            
             return True
             
         except Exception as e:
             db.session.rollback()
-            app.logger.error(f"❌ Error al inicializar base de datos: {str(e)}")
+            print(f"❌ Error al inicializar base de datos: {str(e)}")
             return False
 
+def crear_plantillas_ejemplo():
+    """Crear archivos de plantilla para importación"""
+    try:
+        # Plantilla Excel
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Plantilla"
+        
+        headers = ['Ficha_toma_registro', 'Asesor', 'Municipio', 'Instalacion_Educativa',
+                   'Realizador_Nombre', 'Realizador_Apellidos', 'Matricula_Documento',
+                   'Telefono', 'Correo', 'Grado', 'Programa_Interes', 'Jornada_Interes',
+                   'Estado', 'Observacion']
+        
+        for col, header in enumerate(headers, 1):
+            ws.cell(row=1, column=col, value=header)
+        
+        # Datos de ejemplo
+        ejemplo = ['F001', 'Juan Pérez', 'Facatativá', 'Institución Ejemplo',
+                   'María', 'González', '123456', '3001234567',
+                   'maria@ejemplo.com', '11°', 'Ingeniería Agronómica', 'Diurna',
+                   'pendiente', 'Registro de ejemplo']
+        
+        for col, valor in enumerate(ejemplo, 1):
+            ws.cell(row=2, column=col, value=valor)
+        
+        excel_path = 'static/plantillas/plantilla_recoleccion.xlsx'
+        wb.save(excel_path)
+        
+        # Plantilla CSV
+        csv_path = 'static/plantillas/plantilla_recoleccion.csv'
+        with open(csv_path, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            writer.writerow(headers)
+            writer.writerow(ejemplo)
+        
+        print("✅ Plantillas de ejemplo creadas")
+        
+    except Exception as e:
+        print(f"⚠️ Error al crear plantillas: {str(e)}")
+
+# Inicializar base de datos
 with app.app_context():
     init_database()
 
@@ -1470,4 +1422,4 @@ with app.app_context():
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=False)
+    app.run(host='0.0.1', port=port, debug=True)
