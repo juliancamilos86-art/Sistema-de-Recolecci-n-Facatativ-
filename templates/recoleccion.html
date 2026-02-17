@@ -2,35 +2,210 @@
 
 {% block title %}UNIAGRARIA - Recolección de Datos 2026{% endblock %}
 
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css">
+<style>
+    .btn-uniagraria {
+        background: linear-gradient(135deg, #1C7C54 0%, #4CAF7C 100%);
+        border: none;
+        color: white;
+        font-weight: 600;
+        padding: 10px 20px;
+        border-radius: 10px;
+        transition: all 0.3s ease;
+    }
+    .btn-uniagraria:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(28, 124, 84, 0.3);
+        color: white;
+    }
+    .card-uniagraria {
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+    }
+    .table th {
+        font-weight: 600;
+        color: #1C7C54;
+    }
+    .badge {
+        padding: 8px 12px;
+        font-weight: 500;
+        border-radius: 8px;
+    }
+    .badge.bg-pending {
+        background-color: #ffc107;
+        color: #000;
+    }
+    .badge.bg-processing {
+        background-color: #17a2b8;
+        color: white;
+    }
+    .badge.bg-completed {
+        background-color: #28a745;
+        color: white;
+    }
+    .btn-group .btn {
+        margin: 0 2px;
+        border-radius: 8px !important;
+    }
+    .select2-container--bootstrap-5 .select2-selection {
+        border-radius: 10px;
+        border: 1px solid #ced4da;
+        min-height: 45px;
+    }
+    .action-buttons {
+        display: flex;
+        gap: 5px;
+        flex-wrap: wrap;
+    }
+    .filter-section {
+        background: #f8f9fa;
+        border-radius: 15px;
+        padding: 20px;
+    }
+    .table-responsive {
+        border-radius: 15px;
+    }
+    .dropdown-menu {
+        border: none;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        border-radius: 10px;
+    }
+    .table td {
+        vertical-align: middle;
+    }
+    .btn-outline-success {
+        border-color: #1C7C54;
+        color: #1C7C54;
+    }
+    .btn-outline-success:hover {
+        background-color: #1C7C54;
+        border-color: #1C7C54;
+    }
+    .btn-success {
+        background-color: #1C7C54;
+        border-color: #1C7C54;
+    }
+    .btn-success:hover {
+        background-color: #0e5c3a;
+        border-color: #0e5c3a;
+    }
+    .text-success {
+        color: #1C7C54 !important;
+    }
+    .bg-success {
+        background-color: #1C7C54 !important;
+    }
+    .border-success {
+        border-color: #1C7C54 !important;
+    }
+    .institucion-info {
+        background: #f8f9fa;
+        border-left: 4px solid #1C7C54;
+        padding: 10px;
+        border-radius: 8px;
+        margin-top: 10px;
+        font-size: 0.9rem;
+    }
+    .stats-card {
+        background: white;
+        border-radius: 15px;
+        padding: 15px;
+        text-align: center;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+    }
+    .stats-number {
+        font-size: 1.8rem;
+        font-weight: bold;
+        color: #1C7C54;
+    }
+    .stats-label {
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid">
-    <!-- Encabezado -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h2 class="text-success">
-                <i class="fas fa-clipboard-list me-2"></i>
-                Recolección de Datos Facatativá 2026-1
-            </h2>
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
-                    <li class="breadcrumb-item active" aria-current="page">Recolección</li>
-                </ol>
-            </nav>
-        </div>
-        <div>
-            <button class="btn btn-uniagraria" data-bs-toggle="modal" data-bs-target="#nuevoRegistroModal">
-                <i class="fas fa-plus-circle me-2"></i>
-                Nuevo Registro
-            </button>
+    <!-- Encabezado con estadísticas rápidas -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="text-success">
+                        <i class="fas fa-clipboard-list me-2"></i>
+                        Recolección de Datos Facatativá 2026-1
+                    </h2>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+                            <li class="breadcrumb-item active" aria-current="page">Recolección</li>
+                        </ol>
+                    </nav>
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-uniagraria" data-bs-toggle="modal" data-bs-target="#nuevoRegistroModal">
+                        <i class="fas fa-plus-circle me-2"></i>
+                        Nuevo Registro
+                    </button>
+                    <button class="btn btn-outline-success dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown">
+                        <span class="visually-hidden">Toggle Dropdown</span>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="#" onclick="aceptarMultiplesRegistros()">
+                            <i class="fas fa-check-circle text-success me-2"></i>Aceptar seleccionados
+                        </a></li>
+                        <li><a class="dropdown-item" href="#" onclick="exportarSeleccionados()">
+                            <i class="fas fa-file-excel text-success me-2"></i>Exportar seleccionados
+                        </a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-danger" href="#" onclick="eliminarMultiplesRegistros()">
+                            <i class="fas fa-trash text-danger me-2"></i>Eliminar seleccionados
+                        </a></li>
+                    </ul>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- Filtros -->
+    <!-- Tarjetas de estadísticas -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stats-card">
+                <div class="stats-number">{{ total_registros or 0 }}</div>
+                <div class="stats-label">Total Registros</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card">
+                <div class="stats-number">{{ pendientes or 0 }}</div>
+                <div class="stats-label">Pendientes</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card">
+                <div class="stats-number">{{ procesando or 0 }}</div>
+                <div class="stats-label">En Proceso</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card">
+                <div class="stats-number">{{ completados or 0 }}</div>
+                <div class="stats-label">Completados</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros mejorados -->
     <div class="card card-uniagraria mb-4">
         <div class="card-body">
             <form method="GET" class="row g-3">
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <label class="form-label fw-bold text-success">
                         <i class="fas fa-city me-1"></i>Municipio
                     </label>
@@ -45,23 +220,44 @@
                 </div>
                 <div class="col-md-3">
                     <label class="form-label fw-bold text-success">
+                        <i class="fas fa-school me-1"></i>Institución
+                    </label>
+                    <select name="institucion" class="form-select select2">
+                        <option value="">Todas las instituciones</option>
+                        {% for i in instituciones %}
+                        <option value="{{ i.id }}" {% if request.args.get('institucion')|int == i.id %}selected{% endif %}>
+                            {{ i.nombre }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold text-success">
                         <i class="fas fa-calendar me-1"></i>Periodo
                     </label>
                     <select name="periodo" class="form-select">
-                        <option value="2026-1" {% if periodo_actual == '2026-1' %}selected{% endif %}>2026 - Primer Semestre</option>
-                        <option value="2026-2" {% if periodo_actual == '2026-2' %}selected{% endif %}>2026 - Segundo Semestre</option>
+                        <option value="2026-1" {% if periodo_actual == '2026-1' %}selected{% endif %}>2026-1</option>
+                        <option value="2026-2" {% if periodo_actual == '2026-2' %}selected{% endif %}>2026-2</option>
                     </select>
                 </div>
-                <div class="col-md-3 d-flex align-items-end">
+                <div class="col-md-2">
+                    <label class="form-label fw-bold text-success">
+                        <i class="fas fa-tag me-1"></i>Estado
+                    </label>
+                    <select name="estado" class="form-select">
+                        <option value="">Todos</option>
+                        <option value="pendiente" {% if request.args.get('estado') == 'pendiente' %}selected{% endif %}>Pendiente</option>
+                        <option value="procesando" {% if request.args.get('estado') == 'procesando' %}selected{% endif %}>Procesando</option>
+                        <option value="completado" {% if request.args.get('estado') == 'completado' %}selected{% endif %}>Completado</option>
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
                     <button type="submit" class="btn btn-uniagraria w-100">
                         <i class="fas fa-filter me-2"></i>
                         Filtrar
                     </button>
-                </div>
-                <div class="col-md-2 d-flex align-items-end">
-                    <a href="{{ url_for('recoleccion') }}" class="btn btn-outline-secondary w-100">
-                        <i class="fas fa-undo me-2"></i>
-                        Limpiar
+                    <a href="{{ url_for('recoleccion') }}" class="btn btn-outline-secondary ms-2">
+                        <i class="fas fa-undo"></i>
                     </a>
                 </div>
             </form>
@@ -75,6 +271,9 @@
                 <table class="table table-hover datatable" id="tablaRecoleccion">
                     <thead class="table-success">
                         <tr>
+                            <th width="40">
+                                <input type="checkbox" class="form-check-input" id="selectAll">
+                            </th>
                             <th>ID</th>
                             <th>Ficha</th>
                             <th>Estudiante</th>
@@ -84,13 +283,16 @@
                             <th>Programa</th>
                             <th>Estado</th>
                             <th>Fecha</th>
-                            <th>Acciones</th>
+                            <th width="200">Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for r in registros %}
                         <tr>
-                            <td>#{{ r.id }}</td>
+                            <td>
+                                <input type="checkbox" class="form-check-input select-registro" value="{{ r.id }}">
+                            </td>
+                            <td><span class="fw-bold">#{{ r.id }}</span></td>
                             <td>{{ r.ficha_toma_registro or 'N/A' }}</td>
                             <td>
                                 <strong>{{ r.realizador_nombre }} {{ r.realizador_apellidos or '' }}</strong>
@@ -98,35 +300,67 @@
                                 <small class="text-muted">{{ r.matricula_documento }}</small>
                             </td>
                             <td>{{ r.municipio.nombre if r.municipio else 'N/A' }}</td>
-                            <td>{{ r.institucion.nombre if r.institucion else 'N/A' }}</td>
+                            <td>
+                                {{ r.institucion.nombre if r.institucion else 'N/A' }}
+                                {% if r.institucion and r.institucion.municipio %}
+                                <br><small class="text-muted">{{ r.institucion.municipio.nombre }}</small>
+                                {% endif %}
+                            </td>
                             <td><span class="badge bg-info">{{ r.grado or 'N/A' }}</span></td>
                             <td>{{ r.programa_interes or 'N/A' }}</td>
                             <td>
                                 {% if r.estado == 'completado' %}
-                                <span class="badge bg-success">Completado</span>
+                                <span class="badge bg-completed"><i class="fas fa-check-circle me-1"></i>Completado</span>
+                                {% elif r.estado == 'procesando' %}
+                                <span class="badge bg-processing"><i class="fas fa-clock me-1"></i>Procesando</span>
                                 {% elif r.estado == 'pendiente' %}
-                                <span class="badge bg-warning text-dark">Pendiente</span>
+                                <span class="badge bg-pending"><i class="fas fa-hourglass-half me-1"></i>Pendiente</span>
                                 {% else %}
                                 <span class="badge bg-secondary">{{ r.estado }}</span>
                                 {% endif %}
                             </td>
                             <td>{{ r.fecha_registro.strftime('%d/%m/%Y') if r.fecha_registro else 'N/A' }}</td>
                             <td>
-                                <div class="btn-group" role="group">
+                                <div class="action-buttons">
+                                    {% if r.estado == 'pendiente' %}
+                                    <button class="btn btn-sm btn-success" onclick="aceptarRegistro({{ r.id }})" title="Aceptar registro">
+                                        <i class="fas fa-check-circle"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-warning" onclick="marcarProcesando({{ r.id }})" title="Marcar como procesando">
+                                        <i class="fas fa-clock"></i>
+                                    </button>
+                                    {% elif r.estado == 'procesando' %}
+                                    <button class="btn btn-sm btn-success" onclick="completarRegistro({{ r.id }})" title="Completar registro">
+                                        <i class="fas fa-check-double"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-warning" onclick="reabrirRegistro({{ r.id }})" title="Reabrir registro">
+                                        <i class="fas fa-undo-alt"></i>
+                                    </button>
+                                    {% elif r.estado == 'completado' %}
+                                    <button class="btn btn-sm btn-warning" onclick="reabrirRegistro({{ r.id }})" title="Reabrir registro">
+                                        <i class="fas fa-undo-alt"></i>
+                                    </button>
+                                    {% endif %}
                                     <button class="btn btn-sm btn-outline-primary" onclick="editarRegistro({{ r.id }})" title="Editar">
                                         <i class="fas fa-edit"></i>
                                     </button>
                                     <button class="btn btn-sm btn-outline-info" onclick="verDetalle({{ r.id }})" title="Ver detalles">
                                         <i class="fas fa-eye"></i>
                                     </button>
+                                    <button class="btn btn-sm btn-outline-danger" onclick="eliminarRegistro({{ r.id }})" title="Eliminar">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
                                 </div>
                             </td>
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="10" class="text-center py-4">
-                                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
-                                <p class="text-muted">No hay registros de recolección</p>
+                            <td colspan="11" class="text-center py-5">
+                                <i class="fas fa-inbox fa-4x text-muted mb-3"></i>
+                                <p class="text-muted fs-5">No hay registros de recolección</p>
+                                <button class="btn btn-uniagraria" data-bs-toggle="modal" data-bs-target="#nuevoRegistroModal">
+                                    <i class="fas fa-plus-circle me-2"></i>Crear primer registro
+                                </button>
                             </td>
                         </tr>
                         {% endfor %}
@@ -138,33 +372,39 @@
 </div>
 
 <!-- Modal Nuevo Registro -->
-<div class="modal fade" id="nuevoRegistroModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+<div class="modal fade" id="nuevoRegistroModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header bg-success text-white">
                 <h5 class="modal-title">
                     <i class="fas fa-plus-circle me-2"></i>
                     Nuevo Registro de Recolección
                 </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="formRegistro">
+                <form id="formRegistro" onsubmit="event.preventDefault(); guardarRegistro();">
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold">Ficha de toma de registro</label>
-                            <input type="text" class="form-control" name="ficha_toma_registro" id="ficha_toma_registro">
+                            <label class="form-label fw-bold text-success">
+                                <i class="fas fa-hashtag me-2"></i>Ficha de toma de registro
+                            </label>
+                            <input type="text" class="form-control" name="ficha_toma_registro" id="ficha_toma_registro" placeholder="Ej: F-2026-001">
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold">Asesor</label>
-                            <input type="text" class="form-control" name="asesor" id="asesor">
+                            <label class="form-label fw-bold text-success">
+                                <i class="fas fa-user-tie me-2"></i>Asesor
+                            </label>
+                            <input type="text" class="form-control" name="asesor" id="asesor" placeholder="Nombre del asesor">
                         </div>
                     </div>
                     
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold text-success">Municipio *</label>
-                            <select class="form-select select2" name="municipio_id" id="municipio_id" required>
+                            <label class="form-label fw-bold text-success">
+                                <i class="fas fa-city me-2"></i>Municipio *
+                            </label>
+                            <select class="form-select select2-modal" name="municipio_id" id="municipio_id" required>
                                 <option value="">-- Seleccione un municipio --</option>
                                 {% for m in municipios %}
                                 <option value="{{ m.id }}">{{ m.nombre }}</option>
@@ -173,10 +413,9 @@
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-bold text-success">
-                                <i class="fas fa-school me-2"></i>
-                                Institución Educativa
+                                <i class="fas fa-school me-2"></i>Institución Educativa
                             </label>
-                            <select class="form-select select2" name="institucion_id" id="institucion_id">
+                            <select class="form-select select2-modal" name="institucion_id" id="institucion_id">
                                 <option value="">-- Seleccione una institución --</option>
                                 {% for i in instituciones %}
                                 <option value="{{ i.id }}" 
@@ -193,8 +432,7 @@
                                 {% endfor %}
                             </select>
                             
-                            <!-- Información adicional de la institución seleccionada -->
-                            <div id="institucionInfo" class="small text-muted mt-2 p-2 bg-light rounded" style="display: none;">
+                            <div id="institucionInfo" class="institucion-info" style="display: none;">
                                 <i class="fas fa-info-circle me-1 text-success"></i>
                                 <span id="institucionDetalle"></span>
                             </div>
@@ -203,42 +441,57 @@
                     
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold">Nombres del realizador</label>
-                            <input type="text" class="form-control" name="realizador_nombre" id="realizador_nombre">
+                            <label class="form-label fw-bold text-success">
+                                <i class="fas fa-user me-2"></i>Nombres del realizador
+                            </label>
+                            <input type="text" class="form-control" name="realizador_nombre" id="realizador_nombre" placeholder="Nombres completos">
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold">Apellidos del realizador</label>
-                            <input type="text" class="form-control" name="realizador_apellidos" id="realizador_apellidos">
+                            <label class="form-label fw-bold text-success">
+                                <i class="fas fa-user me-2"></i>Apellidos del realizador
+                            </label>
+                            <input type="text" class="form-control" name="realizador_apellidos" id="realizador_apellidos" placeholder="Apellidos completos">
                         </div>
                     </div>
                     
                     <div class="row">
                         <div class="col-md-4 mb-3">
-                            <label class="form-label fw-bold">Matrícula/Documento</label>
-                            <input type="text" class="form-control" name="matricula_documento" id="matricula_documento">
+                            <label class="form-label fw-bold text-success">
+                                <i class="fas fa-id-card me-2"></i>Matrícula/Documento
+                            </label>
+                            <input type="text" class="form-control" name="matricula_documento" id="matricula_documento" placeholder="Documento de identidad">
                         </div>
                         <div class="col-md-4 mb-3">
-                            <label class="form-label fw-bold">Teléfono</label>
-                            <input type="tel" class="form-control" name="telefono" id="telefono">
+                            <label class="form-label fw-bold text-success">
+                                <i class="fas fa-phone me-2"></i>Teléfono
+                            </label>
+                            <input type="tel" class="form-control" name="telefono" id="telefono" placeholder="Número de contacto">
                         </div>
                         <div class="col-md-4 mb-3">
-                            <label class="form-label fw-bold">Correo</label>
-                            <input type="email" class="form-control" name="correo" id="correo">
+                            <label class="form-label fw-bold text-success">
+                                <i class="fas fa-envelope me-2"></i>Correo
+                            </label>
+                            <input type="email" class="form-control" name="correo" id="correo" placeholder="correo@ejemplo.com">
                         </div>
                     </div>
                     
                     <div class="row">
                         <div class="col-md-4 mb-3">
-                            <label class="form-label fw-bold">Grado</label>
+                            <label class="form-label fw-bold text-success">
+                                <i class="fas fa-graduation-cap me-2"></i>Grado
+                            </label>
                             <select class="form-select" name="grado" id="grado">
                                 <option value="">Seleccione</option>
                                 <option value="9°">9°</option>
                                 <option value="10°">10°</option>
                                 <option value="11°">11°</option>
+                                <option value="Otro">Otro</option>
                             </select>
                         </div>
                         <div class="col-md-4 mb-3">
-                            <label class="form-label fw-bold">Programa de interés</label>
+                            <label class="form-label fw-bold text-success">
+                                <i class="fas fa-book me-2"></i>Programa de interés
+                            </label>
                             <select class="form-select" name="programa_interes" id="programa_interes">
                                 <option value="">Seleccione</option>
                                 <option value="Ingeniería Agronómica">Ingeniería Agronómica</option>
@@ -246,10 +499,13 @@
                                 <option value="Zootecnia">Zootecnia</option>
                                 <option value="Administración de Empresas">Administración de Empresas</option>
                                 <option value="Contaduría Pública">Contaduría Pública</option>
+                                <option value="Ingeniería Ambiental">Ingeniería Ambiental</option>
                             </select>
                         </div>
                         <div class="col-md-4 mb-3">
-                            <label class="form-label fw-bold">Jornada de interés</label>
+                            <label class="form-label fw-bold text-success">
+                                <i class="fas fa-clock me-2"></i>Jornada de interés
+                            </label>
                             <select class="form-select" name="jornada_interes" id="jornada_interes">
                                 <option value="">Seleccione</option>
                                 <option value="Diurna">Diurna</option>
@@ -262,29 +518,37 @@
                     
                     <div class="row">
                         <div class="col-md-12 mb-3">
-                            <label class="form-label fw-bold">Observaciones</label>
-                            <textarea class="form-control" name="observacion" id="observacion" rows="3"></textarea>
+                            <label class="form-label fw-bold text-success">
+                                <i class="fas fa-comment me-2"></i>Observaciones
+                            </label>
+                            <textarea class="form-control" name="observacion" id="observacion" rows="3" placeholder="Observaciones adicionales..."></textarea>
                         </div>
                     </div>
                     
                     <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold">Estado</label>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold text-success">
+                                <i class="fas fa-tag me-2"></i>Estado
+                            </label>
                             <select class="form-select" name="estado" id="estado">
-                                <option value="pendiente">Pendiente</option>
-                                <option value="completado">Completado</option>
+                                <option value="pendiente" selected>Pendiente</option>
                                 <option value="procesando">Procesando</option>
+                                <option value="completado">Completado</option>
                             </select>
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold">Año/Periodo</label>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold text-success">
+                                <i class="fas fa-calendar-alt me-2"></i>Año/Periodo
+                            </label>
                             <input type="text" class="form-control" name="ano_periodo" id="ano_periodo" value="2026-1" readonly>
                         </div>
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Cancelar
+                </button>
                 <button type="button" class="btn btn-uniagraria" onclick="guardarRegistro()">
                     <i class="fas fa-save me-2"></i>
                     Guardar Registro
@@ -295,40 +559,48 @@
 </div>
 
 <!-- Modal Editar Registro -->
-<div class="modal fade" id="editarRegistroModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+<div class="modal fade" id="editarRegistroModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title">
                     <i class="fas fa-edit me-2"></i>
                     Editar Registro de Recolección
                 </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <div id="editarCargando" class="text-center py-4">
-                    <i class="fas fa-spinner fa-spin fa-3x text-primary"></i>
-                    <p class="mt-2">Cargando datos del registro...</p>
+                <div id="editarCargando" class="text-center py-5">
+                    <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                    <p class="mt-3 text-muted">Cargando datos del registro...</p>
                 </div>
                 
-                <form id="formEditar" style="display: none;">
+                <form id="formEditar" style="display: none;" onsubmit="event.preventDefault(); actualizarRegistro();">
                     <input type="hidden" name="id" id="edit_id">
                     
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold">Ficha de toma de registro</label>
+                            <label class="form-label fw-bold text-success">
+                                <i class="fas fa-hashtag me-2"></i>Ficha de toma de registro
+                            </label>
                             <input type="text" class="form-control" name="ficha_toma_registro" id="edit_ficha_toma_registro">
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold">Asesor</label>
+                            <label class="form-label fw-bold text-success">
+                                <i class="fas fa-user-tie me-2"></i>Asesor
+                            </label>
                             <input type="text" class="form-control" name="asesor" id="edit_asesor">
                         </div>
                     </div>
                     
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold text-success">Municipio *</label>
-                            <select class="form-select select2" name="municipio_id" id="edit_municipio_id" required>
+                            <label class="form-label fw-bold text-success">
+                                <i class="fas fa-city me-2"></i>Municipio *
+                            </label>
+                            <select class="form-select select2-modal" name="municipio_id" id="edit_municipio_id" required>
                                 <option value="">-- Seleccione un municipio --</option>
                                 {% for m in municipios %}
                                 <option value="{{ m.id }}">{{ m.nombre }}</option>
@@ -337,10 +609,9 @@
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-bold text-success">
-                                <i class="fas fa-school me-2"></i>
-                                Institución Educativa
+                                <i class="fas fa-school me-2"></i>Institución Educativa
                             </label>
-                            <select class="form-select select2" name="institucion_id" id="edit_institucion_id">
+                            <select class="form-select select2-modal" name="institucion_id" id="edit_institucion_id">
                                 <option value="">-- Seleccione una institución --</option>
                                 {% for i in instituciones %}
                                 <option value="{{ i.id }}" 
@@ -358,42 +629,57 @@
                     
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold">Nombres del realizador</label>
+                            <label class="form-label fw-bold text-success">
+                                <i class="fas fa-user me-2"></i>Nombres del realizador
+                            </label>
                             <input type="text" class="form-control" name="realizador_nombre" id="edit_realizador_nombre">
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold">Apellidos del realizador</label>
+                            <label class="form-label fw-bold text-success">
+                                <i class="fas fa-user me-2"></i>Apellidos del realizador
+                            </label>
                             <input type="text" class="form-control" name="realizador_apellidos" id="edit_realizador_apellidos">
                         </div>
                     </div>
                     
                     <div class="row">
                         <div class="col-md-4 mb-3">
-                            <label class="form-label fw-bold">Matrícula/Documento</label>
+                            <label class="form-label fw-bold text-success">
+                                <i class="fas fa-id-card me-2"></i>Matrícula/Documento
+                            </label>
                             <input type="text" class="form-control" name="matricula_documento" id="edit_matricula_documento">
                         </div>
                         <div class="col-md-4 mb-3">
-                            <label class="form-label fw-bold">Teléfono</label>
+                            <label class="form-label fw-bold text-success">
+                                <i class="fas fa-phone me-2"></i>Teléfono
+                            </label>
                             <input type="tel" class="form-control" name="telefono" id="edit_telefono">
                         </div>
                         <div class="col-md-4 mb-3">
-                            <label class="form-label fw-bold">Correo</label>
+                            <label class="form-label fw-bold text-success">
+                                <i class="fas fa-envelope me-2"></i>Correo
+                            </label>
                             <input type="email" class="form-control" name="correo" id="edit_correo">
                         </div>
                     </div>
                     
                     <div class="row">
                         <div class="col-md-4 mb-3">
-                            <label class="form-label fw-bold">Grado</label>
+                            <label class="form-label fw-bold text-success">
+                                <i class="fas fa-graduation-cap me-2"></i>Grado
+                            </label>
                             <select class="form-select" name="grado" id="edit_grado">
                                 <option value="">Seleccione</option>
                                 <option value="9°">9°</option>
                                 <option value="10°">10°</option>
                                 <option value="11°">11°</option>
+                                <option value="Otro">Otro</option>
                             </select>
                         </div>
                         <div class="col-md-4 mb-3">
-                            <label class="form-label fw-bold">Programa de interés</label>
+                            <label class="form-label fw-bold text-success">
+                                <i class="fas fa-book me-2"></i>Programa de interés
+                            </label>
                             <select class="form-select" name="programa_interes" id="edit_programa_interes">
                                 <option value="">Seleccione</option>
                                 <option value="Ingeniería Agronómica">Ingeniería Agronómica</option>
@@ -401,10 +687,13 @@
                                 <option value="Zootecnia">Zootecnia</option>
                                 <option value="Administración de Empresas">Administración de Empresas</option>
                                 <option value="Contaduría Pública">Contaduría Pública</option>
+                                <option value="Ingeniería Ambiental">Ingeniería Ambiental</option>
                             </select>
                         </div>
                         <div class="col-md-4 mb-3">
-                            <label class="form-label fw-bold">Jornada de interés</label>
+                            <label class="form-label fw-bold text-success">
+                                <i class="fas fa-clock me-2"></i>Jornada de interés
+                            </label>
                             <select class="form-select" name="jornada_interes" id="edit_jornada_interes">
                                 <option value="">Seleccione</option>
                                 <option value="Diurna">Diurna</option>
@@ -417,29 +706,45 @@
                     
                     <div class="row">
                         <div class="col-md-12 mb-3">
-                            <label class="form-label fw-bold">Observaciones</label>
+                            <label class="form-label fw-bold text-success">
+                                <i class="fas fa-comment me-2"></i>Observaciones
+                            </label>
                             <textarea class="form-control" name="observacion" id="edit_observacion" rows="3"></textarea>
                         </div>
                     </div>
                     
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold">Estado</label>
+                            <label class="form-label fw-bold text-success">
+                                <i class="fas fa-tag me-2"></i>Estado
+                            </label>
                             <select class="form-select" name="estado" id="edit_estado">
                                 <option value="pendiente">Pendiente</option>
-                                <option value="completado">Completado</option>
                                 <option value="procesando">Procesando</option>
+                                <option value="completado">Completado</option>
                             </select>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold">Año/Periodo</label>
+                            <label class="form-label fw-bold text-success">
+                                <i class="fas fa-calendar-alt me-2"></i>Año/Periodo
+                            </label>
                             <input type="text" class="form-control" name="ano_periodo" id="edit_ano_periodo" value="2026-1" readonly>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <button type="button" class="btn btn-sm btn-outline-success" onclick="cambiarEstadoDesdeModal()">
+                                <i class="fas fa-sync-alt me-1"></i>Aplicar Cambio de Estado
+                            </button>
                         </div>
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Cancelar
+                </button>
                 <button type="button" class="btn btn-primary" onclick="actualizarRegistro()">
                     <i class="fas fa-save me-2"></i>
                     Actualizar Registro
@@ -450,7 +755,7 @@
 </div>
 
 <!-- Modal Ver Detalle -->
-<div class="modal fade" id="detalleModal" tabindex="-1">
+<div class="modal fade" id="detalleModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-info text-white">
@@ -458,41 +763,72 @@
                     <i class="fas fa-eye me-2"></i>
                     Detalle del Registro
                 </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <div id="detalleCargando" class="text-center py-4">
-                    <i class="fas fa-spinner fa-spin fa-3x text-info"></i>
-                    <p class="mt-2">Cargando detalles...</p>
+                <div id="detalleCargando" class="text-center py-5">
+                    <div class="spinner-border text-info" style="width: 3rem; height: 3rem;" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                    <p class="mt-3 text-muted">Cargando detalles del registro...</p>
                 </div>
                 <div id="detalleContenido" style="display: none;">
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <div class="card bg-light">
+                            <div class="card bg-light h-100">
                                 <div class="card-body">
-                                    <h6 class="card-title text-success">
+                                    <h6 class="card-title text-success border-bottom pb-2">
                                         <i class="fas fa-id-card me-2"></i>Información Básica
                                     </h6>
-                                    <hr>
-                                    <p><strong>ID:</strong> <span id="detalle_id"></span></p>
-                                    <p><strong>Ficha:</strong> <span id="detalle_ficha"></span></p>
-                                    <p><strong>Asesor:</strong> <span id="detalle_asesor"></span></p>
-                                    <p><strong>Periodo:</strong> <span id="detalle_periodo"></span></p>
+                                    <table class="table table-sm">
+                                        <tr>
+                                            <th>ID:</th>
+                                            <td><span id="detalle_id" class="fw-bold"></span></td>
+                                        </tr>
+                                        <tr>
+                                            <th>Ficha:</th>
+                                            <td><span id="detalle_ficha"></span></td>
+                                        </tr>
+                                        <tr>
+                                            <th>Asesor:</th>
+                                            <td><span id="detalle_asesor"></span></td>
+                                        </tr>
+                                        <tr>
+                                            <th>Periodo:</th>
+                                            <td><span id="detalle_periodo"></span></td>
+                                        </tr>
+                                    </table>
                                 </div>
                             </div>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <div class="card bg-light">
+                            <div class="card bg-light h-100">
                                 <div class="card-body">
-                                    <h6 class="card-title text-success">
+                                    <h6 class="card-title text-success border-bottom pb-2">
                                         <i class="fas fa-user me-2"></i>Datos del Estudiante
                                     </h6>
-                                    <hr>
-                                    <p><strong>Nombre:</strong> <span id="detalle_nombre"></span> <span id="detalle_apellidos"></span></p>
-                                    <p><strong>Documento:</strong> <span id="detalle_matricula"></span></p>
-                                    <p><strong>Teléfono:</strong> <span id="detalle_telefono"></span></p>
-                                    <p><strong>Email:</strong> <span id="detalle_correo"></span></p>
-                                    <p><strong>Grado:</strong> <span id="detalle_grado"></span></p>
+                                    <table class="table table-sm">
+                                        <tr>
+                                            <th>Nombre:</th>
+                                            <td><span id="detalle_nombre"></span> <span id="detalle_apellidos"></span></td>
+                                        </tr>
+                                        <tr>
+                                            <th>Documento:</th>
+                                            <td><span id="detalle_matricula"></span></td>
+                                        </tr>
+                                        <tr>
+                                            <th>Teléfono:</th>
+                                            <td><span id="detalle_telefono"></span></td>
+                                        </tr>
+                                        <tr>
+                                            <th>Email:</th>
+                                            <td><span id="detalle_correo"></span></td>
+                                        </tr>
+                                        <tr>
+                                            <th>Grado:</th>
+                                            <td><span id="detalle_grado"></span></td>
+                                        </tr>
+                                    </table>
                                 </div>
                             </div>
                         </div>
@@ -500,26 +836,40 @@
                     
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <div class="card bg-light">
+                            <div class="card bg-light h-100">
                                 <div class="card-body">
-                                    <h6 class="card-title text-success">
+                                    <h6 class="card-title text-success border-bottom pb-2">
                                         <i class="fas fa-school me-2"></i>Institución
                                     </h6>
-                                    <hr>
-                                    <p><strong>Municipio:</strong> <span id="detalle_municipio"></span></p>
-                                    <p><strong>Institución:</strong> <span id="detalle_institucion"></span></p>
+                                    <table class="table table-sm">
+                                        <tr>
+                                            <th>Municipio:</th>
+                                            <td><span id="detalle_municipio"></span></td>
+                                        </tr>
+                                        <tr>
+                                            <th>Institución:</th>
+                                            <td><span id="detalle_institucion"></span></td>
+                                        </tr>
+                                    </table>
                                 </div>
                             </div>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <div class="card bg-light">
+                            <div class="card bg-light h-100">
                                 <div class="card-body">
-                                    <h6 class="card-title text-success">
+                                    <h6 class="card-title text-success border-bottom pb-2">
                                         <i class="fas fa-graduation-cap me-2"></i>Interés Académico
                                     </h6>
-                                    <hr>
-                                    <p><strong>Programa:</strong> <span id="detalle_programa"></span></p>
-                                    <p><strong>Jornada:</strong> <span id="detalle_jornada"></span></p>
+                                    <table class="table table-sm">
+                                        <tr>
+                                            <th>Programa:</th>
+                                            <td><span id="detalle_programa"></span></td>
+                                        </tr>
+                                        <tr>
+                                            <th>Jornada:</th>
+                                            <td><span id="detalle_jornada"></span></td>
+                                        </tr>
+                                    </table>
                                 </div>
                             </div>
                         </div>
@@ -529,11 +879,10 @@
                         <div class="col-12 mb-3">
                             <div class="card bg-light">
                                 <div class="card-body">
-                                    <h6 class="card-title text-success">
+                                    <h6 class="card-title text-success border-bottom pb-2">
                                         <i class="fas fa-clipboard me-2"></i>Observaciones
                                     </h6>
-                                    <hr>
-                                    <p id="detalle_observacion" class="mb-0"></p>
+                                    <p id="detalle_observacion" class="mb-0 p-2 bg-white rounded"></p>
                                 </div>
                             </div>
                         </div>
@@ -543,13 +892,23 @@
                         <div class="col-12">
                             <div class="card bg-light">
                                 <div class="card-body">
-                                    <h6 class="card-title text-success">
-                                        <i class="fas fa-info-circle me-2"></i>Estado y Auditoría
+                                    <h6 class="card-title text-success border-bottom pb-2">
+                                        <i class="fas fa-history me-2"></i>Auditoría
                                     </h6>
-                                    <hr>
-                                    <p><strong>Estado:</strong> <span id="detalle_estado"></span></p>
-                                    <p><strong>Fecha Registro:</strong> <span id="detalle_fecha"></span></p>
-                                    <p><strong>Registrado por:</strong> <span id="detalle_usuario"></span></p>
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <strong>Estado:</strong><br>
+                                            <span id="detalle_estado"></span>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <strong>Fecha Registro:</strong><br>
+                                            <span id="detalle_fecha"></span>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <strong>Registrado por:</strong><br>
+                                            <span id="detalle_usuario"></span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -557,7 +916,9 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Cerrar
+                </button>
                 <button type="button" class="btn btn-primary" onclick="editarDesdeDetalle()" id="btnEditarDetalle">
                     <i class="fas fa-edit me-2"></i>Editar
                 </button>
@@ -565,12 +926,23 @@
         </div>
     </div>
 </div>
+{% endblock %}
 
+{% block extra_js %}
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+<script src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
+// Configuración global
+const csrftoken = '{{ csrf_token() if csrf_token else "" }}';
 let registroActualId = null;
 
-// Inicializar DataTable
 $(document).ready(function() {
+    // Inicializar DataTable
     if ($('#tablaRecoleccion tbody tr').length > 0 && $('#tablaRecoleccion tbody tr td').length > 1) {
         $('#tablaRecoleccion').DataTable({
             responsive: true,
@@ -578,15 +950,20 @@ $(document).ready(function() {
                 url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
             },
             pageLength: 25,
-            order: [[0, 'desc']],
+            order: [[1, 'desc']],
             columnDefs: [
-                { orderable: false, targets: 9 }
+                { orderable: false, targets: [0, 10] }
             ]
         });
     }
     
     // Inicializar Select2
     $('.select2').select2({
+        theme: 'bootstrap-5',
+        width: '100%'
+    });
+    
+    $('.select2-modal').select2({
         theme: 'bootstrap-5',
         width: '100%',
         dropdownParent: $('#nuevoRegistroModal, #editarRegistroModal')
@@ -635,18 +1012,44 @@ $(document).ready(function() {
             $('#institucionInfo').hide();
         }
     });
+    
+    // Select all functionality
+    $('#selectAll').on('change', function() {
+        $('.select-registro').prop('checked', $(this).prop('checked'));
+    });
+    
+    $(document).on('change', '.select-registro', function() {
+        const total = $('.select-registro').length;
+        const checked = $('.select-registro:checked').length;
+        $('#selectAll').prop('checked', total === checked && total > 0);
+    });
 });
 
-// Guardar registro
+// FUNCIONES PARA GUARDAR REGISTRO
 function guardarRegistro() {
     const form = document.getElementById('formRegistro');
     const formData = new FormData(form);
     const data = Object.fromEntries(formData.entries());
     
     if (!data.municipio_id) {
-        toastr.warning('Por favor seleccione un municipio');
+        Swal.fire({
+            icon: 'warning',
+            title: 'Campo requerido',
+            text: 'Por favor seleccione un municipio'
+        });
         return;
     }
+    
+    Swal.fire({
+        title: 'Guardando...',
+        text: 'Por favor espere',
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        showConfirmButton: false,
+        willOpen: () => {
+            Swal.showLoading();
+        }
+    });
     
     fetch('/api/recoleccion', {
         method: 'POST',
@@ -664,20 +1067,30 @@ function guardarRegistro() {
     })
     .then(data => {
         if (data.error) {
-            toastr.error(data.error);
-        } else {
-            toastr.success('Registro creado exitosamente');
-            bootstrap.Modal.getInstance(document.getElementById('nuevoRegistroModal')).hide();
-            setTimeout(() => location.reload(), 1500);
+            throw new Error(data.error);
         }
+        Swal.fire({
+            icon: 'success',
+            title: '¡Éxito!',
+            text: 'Registro creado exitosamente',
+            timer: 2000,
+            showConfirmButton: false
+        }).then(() => {
+            bootstrap.Modal.getInstance(document.getElementById('nuevoRegistroModal')).hide();
+            location.reload();
+        });
     })
     .catch(error => {
         console.error('Error:', error);
-        toastr.error(error.error || 'Error al guardar el registro');
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: error.message || 'Error al guardar el registro'
+        });
     });
 }
 
-// Editar registro
+// FUNCIONES PARA EDITAR REGISTRO
 function editarRegistro(id) {
     registroActualId = id;
     
@@ -730,7 +1143,6 @@ function editarRegistro(id) {
         });
 }
 
-// Actualizar registro
 function actualizarRegistro() {
     const form = document.getElementById('formEditar');
     const formData = new FormData(form);
@@ -738,9 +1150,24 @@ function actualizarRegistro() {
     const id = data.id;
     
     if (!data.municipio_id) {
-        toastr.warning('Por favor seleccione un municipio');
+        Swal.fire({
+            icon: 'warning',
+            title: 'Campo requerido',
+            text: 'Por favor seleccione un municipio'
+        });
         return;
     }
+    
+    Swal.fire({
+        title: 'Actualizando...',
+        text: 'Por favor espere',
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        showConfirmButton: false,
+        willOpen: () => {
+            Swal.showLoading();
+        }
+    });
     
     fetch(`/api/recoleccion/${id}`, {
         method: 'PUT',
@@ -758,20 +1185,30 @@ function actualizarRegistro() {
     })
     .then(data => {
         if (data.error) {
-            toastr.error(data.error);
-        } else {
-            toastr.success('Registro actualizado exitosamente');
-            bootstrap.Modal.getInstance(document.getElementById('editarRegistroModal')).hide();
-            setTimeout(() => location.reload(), 1500);
+            throw new Error(data.error);
         }
+        Swal.fire({
+            icon: 'success',
+            title: '¡Éxito!',
+            text: 'Registro actualizado exitosamente',
+            timer: 2000,
+            showConfirmButton: false
+        }).then(() => {
+            bootstrap.Modal.getInstance(document.getElementById('editarRegistroModal')).hide();
+            location.reload();
+        });
     })
     .catch(error => {
         console.error('Error:', error);
-        toastr.error(error.error || 'Error al actualizar el registro');
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: error.message || 'Error al actualizar el registro'
+        });
     });
 }
 
-// Ver detalle
+// FUNCIONES PARA VER DETALLE
 function verDetalle(id) {
     registroActualId = id;
     
@@ -793,7 +1230,7 @@ function verDetalle(id) {
             document.getElementById('detalle_ficha').textContent = data.ficha || 'N/A';
             document.getElementById('detalle_asesor').textContent = data.asesor || 'N/A';
             document.getElementById('detalle_periodo').textContent = data.periodo || 'N/A';
-            document.getElementById('detalle_nombre').textContent = data.nombre || 'N/A';
+            document.getElementById('detalle_nombre').textContent = data.nombre || '';
             document.getElementById('detalle_apellidos').textContent = data.apellidos || '';
             document.getElementById('detalle_matricula').textContent = data.matricula || 'N/A';
             document.getElementById('detalle_telefono').textContent = data.telefono || 'N/A';
@@ -807,11 +1244,17 @@ function verDetalle(id) {
             
             const estado = data.estado || 'pendiente';
             let badgeClass = 'badge bg-warning';
-            if (estado === 'completado') badgeClass = 'badge bg-success';
-            else if (estado === 'procesando') badgeClass = 'badge bg-info';
-            document.getElementById('detalle_estado').innerHTML = `<span class="${badgeClass}">${estado}</span>`;
+            let icono = 'fa-hourglass-half';
+            if (estado === 'completado') {
+                badgeClass = 'badge bg-success';
+                icono = 'fa-check-circle';
+            } else if (estado === 'procesando') {
+                badgeClass = 'badge bg-info';
+                icono = 'fa-clock';
+            }
+            document.getElementById('detalle_estado').innerHTML = `<span class="${badgeClass}"><i class="fas ${icono} me-1"></i>${estado}</span>`;
             
-            document.getElementById('detalle_fecha').textContent = data.fecha ? new Date(data.fecha).toLocaleString() : 'N/A';
+            document.getElementById('detalle_fecha').textContent = data.fecha ? new Date(data.fecha).toLocaleString('es-CO') : 'N/A';
             document.getElementById('detalle_usuario').textContent = data.usuario || 'N/A';
             
             document.getElementById('detalleCargando').style.display = 'none';
@@ -836,6 +1279,359 @@ function editarDesdeDetalle() {
             editarRegistro(registroActualId);
         }, 500);
     }
+}
+
+// FUNCIONES PARA CAMBIAR ESTADOS
+function aceptarRegistro(id) {
+    Swal.fire({
+        title: '¿Aceptar registro?',
+        text: 'El registro será marcado como completado',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#28a745',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Sí, aceptar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            cambiarEstadoRegistro(id, 'completado', 'Registro aceptado exitosamente');
+        }
+    });
+}
+
+function marcarProcesando(id) {
+    Swal.fire({
+        title: '¿Marcar como procesando?',
+        text: 'El registro pasará a estado "En Proceso"',
+        icon: 'info',
+        showCancelButton: true,
+        confirmButtonColor: '#ffc107',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Sí, marcar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            cambiarEstadoRegistro(id, 'procesando', 'Registro marcado como procesando');
+        }
+    });
+}
+
+function completarRegistro(id) {
+    Swal.fire({
+        title: '¿Completar registro?',
+        text: 'El registro será marcado como completado',
+        icon: 'success',
+        showCancelButton: true,
+        confirmButtonColor: '#28a745',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Sí, completar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            cambiarEstadoRegistro(id, 'completado', 'Registro completado exitosamente');
+        }
+    });
+}
+
+function reabrirRegistro(id) {
+    Swal.fire({
+        title: '¿Reabrir registro?',
+        text: 'El registro volverá a estado pendiente',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ffc107',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Sí, reabrir',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            cambiarEstadoRegistro(id, 'pendiente', 'Registro reabierto exitosamente');
+        }
+    });
+}
+
+function cambiarEstadoRegistro(id, nuevoEstado, mensajeExito) {
+    Swal.fire({
+        title: 'Procesando...',
+        text: 'Por favor espere',
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        showConfirmButton: false,
+        willOpen: () => {
+            Swal.showLoading();
+        }
+    });
+
+    fetch(`/api/recoleccion/${id}/estado`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken
+        },
+        body: JSON.stringify({ estado: nuevoEstado })
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(err => { throw err; });
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.error) {
+            throw new Error(data.error);
+        }
+        Swal.fire({
+            icon: 'success',
+            title: '¡Éxito!',
+            text: mensajeExito,
+            timer: 2000,
+            showConfirmButton: false
+        }).then(() => {
+            location.reload();
+        });
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: error.message || 'Error al cambiar el estado del registro'
+        });
+    });
+}
+
+function cambiarEstadoDesdeModal() {
+    const id = document.getElementById('edit_id').value;
+    const nuevoEstado = document.getElementById('edit_estado').value;
+    cambiarEstadoRegistro(id, nuevoEstado, 'Estado actualizado correctamente');
+}
+
+// FUNCIONES PARA ELIMINAR
+function eliminarRegistro(id) {
+    Swal.fire({
+        title: '¿Eliminar registro?',
+        text: 'Esta acción no se puede deshacer',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.fire({
+                title: 'Eliminando...',
+                text: 'Por favor espere',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                showConfirmButton: false,
+                willOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            fetch(`/api/recoleccion/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRFToken': csrftoken
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => { throw err; });
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡Eliminado!',
+                    text: 'El registro ha sido eliminado',
+                    timer: 2000,
+                    showConfirmButton: false
+                }).then(() => {
+                    location.reload();
+                });
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: error.message || 'Error al eliminar el registro'
+                });
+            });
+        }
+    });
+}
+
+// FUNCIONES PARA ACCIONES MÚLTIPLES
+function aceptarMultiplesRegistros() {
+    const seleccionados = [];
+    $('.select-registro:checked').each(function() {
+        seleccionados.push($(this).val());
+    });
+    
+    if (seleccionados.length === 0) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Selecciona registros',
+            text: 'Debes seleccionar al menos un registro'
+        });
+        return;
+    }
+    
+    Swal.fire({
+        title: `¿Aceptar ${seleccionados.length} registros?`,
+        text: 'Los registros seleccionados serán marcados como completados',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#28a745',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Sí, aceptar todos',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.fire({
+                title: 'Procesando...',
+                text: 'Por favor espere',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                showConfirmButton: false,
+                willOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+            
+            fetch('/api/recoleccion/estado/multiple', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                },
+                body: JSON.stringify({ 
+                    ids: seleccionados, 
+                    estado: 'completado' 
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡Completado!',
+                    text: `Se actualizaron ${data.actualizados || seleccionados.length} registros`,
+                    timer: 2000,
+                    showConfirmButton: false
+                }).then(() => {
+                    location.reload();
+                });
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: error.message || 'Error al procesar los registros'
+                });
+            });
+        }
+    });
+}
+
+function eliminarMultiplesRegistros() {
+    const seleccionados = [];
+    $('.select-registro:checked').each(function() {
+        seleccionados.push($(this).val());
+    });
+    
+    if (seleccionados.length === 0) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Selecciona registros',
+            text: 'Debes seleccionar al menos un registro'
+        });
+        return;
+    }
+    
+    Swal.fire({
+        title: `¿Eliminar ${seleccionados.length} registros?`,
+        text: 'Esta acción no se puede deshacer',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Sí, eliminar todos',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.fire({
+                title: 'Eliminando...',
+                text: 'Por favor espere',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                showConfirmButton: false,
+                willOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+            
+            fetch('/api/recoleccion/eliminar/multiple', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                },
+                body: JSON.stringify({ ids: seleccionados })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡Completado!',
+                    text: `Se eliminaron ${data.eliminados || seleccionados.length} registros`,
+                    timer: 2000,
+                    showConfirmButton: false
+                }).then(() => {
+                    location.reload();
+                });
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: error.message || 'Error al eliminar los registros'
+                });
+            });
+        }
+    });
+}
+
+function exportarSeleccionados() {
+    const seleccionados = [];
+    $('.select-registro:checked').each(function() {
+        seleccionados.push($(this).val());
+    });
+    
+    if (seleccionados.length === 0) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Selecciona registros',
+            text: 'Debes seleccionar al menos un registro'
+        });
+        return;
+    }
+    
+    window.location.href = `/api/recoleccion/exportar?ids=${seleccionados.join(',')}`;
 }
 </script>
 {% endblock %}
