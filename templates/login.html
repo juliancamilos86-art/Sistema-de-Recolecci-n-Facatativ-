@@ -347,11 +347,11 @@
     </style>
 </head>
 <body>
-    <video id="background-video" autoplay loop muted playsinline>
-        <source src="{{ url_for('static', filename='uploads/FrenteU.mp4') }}" type="video/mp4">
-        Tu navegador no soporta videos HTML5.
+    <!-- VIDEO -->
+    <video autoplay muted loop playsinline preload="auto" id="background-video">
+        <source src="https://res.cloudinary.com/dcplwmqpp/video/upload/q_auto,f_auto/v1771349030/FrenteU_uxumor.mp4" type="video/mp4">
+        Tu navegador no soporta video HTML5.
     </video>
-    <div class="video-overlay"></div>
 
     <div class="login-card">
         <div class="login-header">
