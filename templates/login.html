@@ -2,207 +2,658 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
     <title>Iniciar Sesión - UNIAGRARIA</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <style>
-        body {
+        /* RESET Y VARIABLES */
+        * {
             margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #1C7C54;
+            --primary-dark: #0e5c3a;
+            --primary-light: #4CAF7C;
+            --secondary-color: #2f2f2f;
+            --text-color: #333;
+            --text-muted: #6c757d;
+            --white: #ffffff;
+            --shadow-sm: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --shadow-md: 0 10px 25px rgba(0, 0, 0, 0.2);
+            --shadow-lg: 0 15px 40px rgba(0, 0, 0, 0.35);
+            --transition: all 0.3s ease;
+            --border-radius: 25px;
+        }
+
+        body {
             font-family: 'Arial', sans-serif;
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             position: relative;
-            overflow: hidden;
+            overflow-x: hidden;
+            background: #000;
         }
+
+        /* VIDEO BACKGROUND MEJORADO */
         video#background-video {
             position: fixed;
             top: 0;
             left: 0;
-            min-width: 100%;
-            min-height: 100%;
-            width: auto;
-            height: auto;
-            z-index: -1;
+            width: 100%;
+            height: 100%;
             object-fit: cover;
-            filter: brightness(0.55) saturate(1.1);
+            z-index: -1;
+            filter: brightness(0.5) saturate(1.2) blur(2px);
+            transform: scale(1.1);
         }
+
+        /* OVERLAY PARA MEJOR LEGIBILIDAD */
+        .video-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.3) 100%);
+            z-index: -1;
+        }
+
+        /* CARD PRINCIPAL MEJORADA */
         .login-card {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 25px;
-            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.35);
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-lg);
             overflow: hidden;
             max-width: 450px;
-            width: 100%;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            width: 90%;
+            margin: 20px auto;
+            transition: var(--transition);
             backdrop-filter: blur(10px);
+            position: relative;
+            border: 1px solid rgba(255,255,255,0.2);
         }
+
         .login-card:hover {
-            transform: translateY(-6px);
-            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.4);
+            transform: translateY(-8px);
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5);
         }
+
+        /* BARRA DE SEGURIDAD SUPERIOR */
+        .security-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, 
+                var(--primary-color) 0%, 
+                var(--primary-light) 25%, 
+                var(--primary-color) 50%, 
+                var(--primary-light) 75%, 
+                var(--primary-color) 100%);
+            background-size: 200% 100%;
+            animation: gradientMove 3s ease infinite;
+            z-index: 10;
+        }
+
+        @keyframes gradientMove {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* HEADER MEJORADO */
         .login-header {
-            background: linear-gradient(135deg, #1C7C54 0%, #4CAF7C 100%);
-            color: white;
-            padding: 35px 20px 25px;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%);
+            color: var(--white);
+            padding: 30px 20px 25px;
             text-align: center;
-            border-bottom: 4px solid #fff;
+            border-bottom: 4px solid rgba(255,255,255,0.3);
+            position: relative;
+            overflow: hidden;
         }
+
+        .login-header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: rotate 20s linear infinite;
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
         .login-header .logo {
-            width: 120px;
+            width: 100px;
             height: auto;
-            margin-bottom: 12px;
-            background: white;
-            border-radius: 12px;
-            padding: 5px;
-            box-shadow: 0 0 10px rgba(255,255,255,0.3);
-        }
-        .login-header i {
-            font-size: 55px;
             margin-bottom: 10px;
-            display: block;
+            background: var(--white);
+            border-radius: 15px;
+            padding: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            transition: var(--transition);
+            position: relative;
+            z-index: 1;
         }
+
+        .login-header .logo:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+        }
+
+        .login-header i {
+            font-size: 45px;
+            margin-bottom: 8px;
+            display: block;
+            position: relative;
+            z-index: 1;
+        }
+
         .login-header h3 {
             font-weight: 700;
-            font-size: 22px;
+            font-size: clamp(18px, 4vw, 22px);
+            position: relative;
+            z-index: 1;
         }
+
         .login-header p {
-            font-size: 15px;
-            opacity: 0.9;
+            font-size: clamp(13px, 3vw, 15px);
+            opacity: 0.95;
             margin-top: 4px;
             letter-spacing: 1px;
+            position: relative;
+            z-index: 1;
         }
+
+        /* BODY MEJORADO */
         .login-body {
-            padding: 40px 35px;
+            padding: clamp(25px, 5vw, 40px) clamp(20px, 4vw, 35px);
         }
+
+        /* FORM LABELS */
+        .form-label {
+            font-weight: 600;
+            color: var(--text-color);
+            margin-bottom: 5px;
+            font-size: clamp(13px, 3vw, 14px);
+        }
+
         .form-label i {
-            color: #1C7C54;
+            color: var(--primary-color);
             margin-right: 6px;
         }
+
+        /* INPUT GROUPS MEJORADOS */
+        .input-group {
+            position: relative;
+            margin-bottom: 5px;
+        }
+
         .form-control {
-            border-radius: 10px;
-            border: 1px solid #ced4da;
-            padding: 12px 15px;
-            font-size: 15px;
+            border-radius: 12px;
+            border: 2px solid #e9ecef;
+            padding: 14px 15px;
+            font-size: clamp(14px, 3.5vw, 15px);
+            transition: var(--transition);
+            background: rgba(255,255,255,0.9);
+            width: 100%;
         }
+
         .form-control:focus {
-            border-color: #1C7C54;
+            border-color: var(--primary-color);
             box-shadow: 0 0 0 0.25rem rgba(28, 124, 84, 0.25);
+            background: var(--white);
+            outline: none;
         }
+
+        .form-control.is-invalid {
+            border-color: #dc3545;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke-linejoin='round' d='M5.8 3.6h.4L6 6.5z'/%3e%3ccircle cx='6' cy='8.2' r='.6' fill='%23dc3545' stroke='none'/%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            background-size: 16px 12px;
+        }
+
+        /* TOGGLE CONTRASEÑA MEJORADO */
+        .password-toggle {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: var(--text-muted);
+            z-index: 10;
+            background: var(--white);
+            padding: 5px;
+            border-radius: 50%;
+            transition: var(--transition);
+            font-size: 1.2rem;
+        }
+
+        .password-toggle:hover {
+            color: var(--primary-color);
+            background: #f8f9fa;
+        }
+
+        /* BOTÓN LOGIN MEJORADO */
         .btn-login {
-            background: linear-gradient(135deg, #1C7C54 0%, #4CAF7C 100%);
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%);
             border: none;
-            padding: 12px;
-            font-size: 17px;
+            padding: 14px;
+            font-size: clamp(15px, 3.5vw, 17px);
             font-weight: bold;
-            color: white;
-            border-radius: 10px;
-            transition: all 0.3s ease;
+            color: var(--white);
+            border-radius: 12px;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+            width: 100%;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(28, 124, 84, 0.3);
         }
+
+        .btn-login::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .btn-login:active::before {
+            width: 300px;
+            height: 300px;
+        }
+
         .btn-login:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
-            opacity: 0.95;
+            transform: translateY(-3px);
+            box-shadow: 0 15px 30px rgba(28, 124, 84, 0.4);
+            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-color) 100%);
         }
+
+        .btn-login:active {
+            transform: translateY(-1px);
+        }
+
+        .btn-login:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        /* BOTÓN MICROSOFT MEJORADO */
         .btn-microsoft {
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 12px;
-            padding: 12px;
-            background: #2f2f2f;
-            color: white;
-            border: none;
-            border-radius: 10px;
-            font-size: 16px;
+            padding: 14px;
+            background: var(--secondary-color);
+            color: var(--white);
+            border: 2px solid transparent;
+            border-radius: 12px;
+            font-size: clamp(14px, 3.5vw, 16px);
             font-weight: 600;
             text-decoration: none;
-            transition: all 0.3s ease;
+            transition: var(--transition);
             margin-bottom: 20px;
+            width: 100%;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
         }
+
         .btn-microsoft:hover {
             background: #000;
-            color: white;
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+            color: var(--white);
+            transform: translateY(-3px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
+            border-color: var(--primary-color);
         }
+
+        .btn-microsoft:active {
+            transform: translateY(-1px);
+        }
+
         .btn-microsoft svg {
             flex-shrink: 0;
+            width: 21px;
+            height: 21px;
         }
+
+        /* HINT MICROSOFT */
+        .microsoft-hint {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: clamp(11px, 2.5vw, 13px);
+            margin-top: 8px;
+            margin-bottom: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .microsoft-hint i {
+            font-size: 1.1rem;
+        }
+
+        /* DIVISOR MEJORADO */
         .login-divider {
             display: flex;
             align-items: center;
             text-align: center;
             margin: 25px 0;
         }
+
         .login-divider::before,
         .login-divider::after {
             content: '';
             flex: 1;
-            border-bottom: 1px solid #dee2e6;
+            border-bottom: 2px solid #dee2e6;
         }
+
         .login-divider span {
             padding: 0 15px;
-            color: #6c757d;
-            font-size: 13px;
-            font-weight: 500;
+            color: var(--text-muted);
+            font-size: clamp(12px, 2.8vw, 14px);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
-        .microsoft-hint {
+
+        /* ALERTAS MEJORADAS */
+        .alert {
+            border-radius: 12px;
+            border-left: 4px solid;
+            padding: 12px 15px;
+            margin-bottom: 20px;
+            font-size: clamp(13px, 3vw, 14px);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .alert-success {
+            border-left-color: var(--primary-color);
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .alert-danger {
+            border-left-color: #dc3545;
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .alert-warning {
+            border-left-color: #ffc107;
+            background-color: #fff3cd;
+            color: #856404;
+        }
+
+        .alert-info {
+            border-left-color: #17a2b8;
+            background-color: #d1ecf1;
+            color: #0c5460;
+        }
+
+        /* SECCIÓN DE SEGURIDAD */
+        .security-section {
+            margin-top: 25px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            border: 1px solid #e9ecef;
+        }
+
+        .security-badge {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: clamp(10px, 3vw, 20px);
+            flex-wrap: wrap;
+        }
+
+        .security-badge span {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            color: var(--text-muted);
+            font-size: clamp(11px, 2.5vw, 12px);
+        }
+
+        .security-badge i {
+            color: var(--primary-color);
+            font-size: 1.1rem;
+        }
+
+        .security-note {
             text-align: center;
-            color: #6c757d;
-            font-size: 13px;
-            margin-top: 8px;
-            margin-bottom: 0;
+            margin-top: 10px;
+            font-size: clamp(11px, 2.5vw, 12px);
         }
+
+        /* INDICADOR DE FUERZA DE CONTRASEÑA */
+        .password-strength {
+            margin-top: 5px;
+            height: 4px;
+            background: #e9ecef;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .password-strength-bar {
+            height: 100%;
+            width: 0;
+            transition: width 0.3s ease, background-color 0.3s ease;
+        }
+
+        .strength-weak {
+            background-color: #dc3545;
+            width: 33.33%;
+        }
+
+        .strength-medium {
+            background-color: #ffc107;
+            width: 66.66%;
+        }
+
+        .strength-strong {
+            background-color: var(--primary-color);
+            width: 100%;
+        }
+
+        /* FOOTER */
         hr {
-            border-top: 1px solid #e0e0e0;
-            margin-top: 35px;
-            margin-bottom: 0;
+            border-top: 2px solid #e9ecef;
+            margin: 25px 0 15px;
+            opacity: 0.8;
         }
-        @media (max-width: 480px) {
+
+        .footer-text {
+            text-align: center;
+        }
+
+        .footer-text p {
+            margin-bottom: 8px;
+            font-size: clamp(11px, 2.5vw, 12px);
+        }
+
+        /* RESPONSIVE EXTREMO */
+        @media (max-width: 360px) {
             .login-card {
-                margin: 20px;
+                width: 95%;
+                margin: 10px auto;
             }
+            
+            .login-header {
+                padding: 20px 15px;
+            }
+            
             .login-header .logo {
-                width: 90px;
+                width: 80px;
             }
-            video#background-video {
-                object-position: center;
+            
+            .login-body {
+                padding: 20px 15px;
             }
+            
+            .btn-microsoft {
+                padding: 12px;
+                font-size: 13px;
+            }
+            
+            .btn-microsoft svg {
+                width: 18px;
+                height: 18px;
+            }
+            
+            .security-badge {
+                gap: 8px;
+            }
+        }
+
+        @media (min-width: 361px) and (max-width: 480px) {
+            .login-card {
+                width: 92%;
+            }
+        }
+
+        @media (min-width: 481px) and (max-width: 768px) {
+            .login-card {
+                width: 80%;
+                max-width: 450px;
+            }
+        }
+
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .login-card {
+                width: 70%;
+                max-width: 450px;
+            }
+        }
+
+        @media (min-width: 1025px) {
+            .login-card {
+                width: 100%;
+            }
+        }
+
+        /* LANDSCAPE MODE */
+        @media (max-height: 600px) and (orientation: landscape) {
+            body {
+                align-items: flex-start;
+                padding: 20px 0;
+            }
+            
+            .login-card {
+                margin: 10px auto;
+            }
+            
+            .login-header {
+                padding: 15px;
+            }
+            
+            .login-header .logo {
+                width: 60px;
+            }
+            
+            .login-header i {
+                font-size: 30px;
+            }
+            
+            .login-body {
+                padding: 15px;
+            }
+            
+            .security-section {
+                margin-top: 10px;
+                padding: 10px;
+            }
+        }
+
+        /* ANIMACIONES DE CARGA */
+        .loading {
+            position: relative;
+            pointer-events: none;
+            opacity: 0.7;
+        }
+
+        .loading::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            margin: -10px 0 0 -10px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: var(--white);
+            border-radius: 50%;
+            animation: spinner 0.6s linear infinite;
+        }
+
+        @keyframes spinner {
+            to { transform: rotate(360deg); }
         }
     </style>
 </head>
 <body>
+    <!-- Video Background -->
     <video id="background-video" autoplay loop muted playsinline>
         <source src="{{ url_for('static', filename='uploads/FrenteU.mp4') }}" type="video/mp4">
         Tu navegador no soporta videos HTML5.
     </video>
+    <div class="video-overlay"></div>
 
+    <!-- Login Card -->
     <div class="login-card">
+        <div class="security-bar"></div>
+        
         <div class="login-header">
-            <img src="{{ url_for('static', filename='uploads/LogoU.png') }}" alt="Logo UNIAGRARIA" class="logo">
-            <i class="bi bi-shield-lock"></i>
-            <h3 class="mb-0">Sistema de Recolección Facatativá </h3>
-            <p class="mb-0">UNIAGRARIA</p>
+            <img src="{{ url_for('static', filename='uploads/LogoU.png') }}" alt="Logo UNIAGRARIA" class="logo" loading="lazy">
+            <i class="bi bi-shield-lock-fill"></i>
+            <h3 class="mb-0">Sistema de Recolección</h3>
+            <p class="mb-0">Facatativá - UNIAGRARIA</p>
         </div>
         
         <div class="login-body">
+            <!-- Mensajes Flash Mejorados -->
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
                     {% for category, message in messages %}
-                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    <div class="alert alert-{{ category }} alert-dismissible fade show shadow-sm" role="alert">
+                        <i class="bi bi-{% if category == 'success' %}check-circle-fill{% elif category == 'danger' %}exclamation-triangle-fill{% elif category == 'warning' %}exclamation-circle-fill{% else %}info-circle-fill{% endif %}"></i>
+                        <span>{{ message }}</span>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
                     {% endfor %}
                 {% endif %}
             {% endwith %}
-            
-            <!-- BOTÓN MICROSOFT -->
-            <a href="{{ auth_url }}" class="btn btn-microsoft w-100">
-                <svg width="21" height="21" viewBox="0 0 21 21" xmlns="http://www.w3.org/2000/svg">
+
+            <!-- Botón Microsoft 365 con Seguridad Mejorada -->
+            <a href="{{ auth_url }}" 
+               class="btn-microsoft" 
+               id="microsoftBtn"
+               onclick="handleMicrosoftLogin(event)">
+                <svg width="21" height="21" viewBox="0 0 21 21">
                     <rect x="0" y="0" width="10" height="10" fill="#f25022"/>
                     <rect x="11" y="0" width="10" height="10" fill="#7fba00"/>
                     <rect x="0" y="11" width="10" height="10" fill="#00a4ef"/>
@@ -210,52 +661,326 @@
                 </svg>
                 <span>Iniciar sesión con Microsoft 365</span>
             </a>
+            
             <p class="microsoft-hint">
                 <i class="bi bi-building"></i>
-                Usa tu cuenta institucional @uniagraria.edu.co
+                <span>Cuenta institucional @uniagraria.edu.co</span>
+                <i class="bi bi-shield-check text-success"></i>
+                <i class="bi bi-microsoft"></i>
             </p>
 
-            <!-- DIVISOR -->
+            <!-- Divisor -->
             <div class="login-divider">
                 <span>O CONTINÚA CON</span>
             </div>
 
-            <!-- ============================================ -->
-            <!-- FORMULARIO DE RESPALDO - ESTE SÍ FUNCIONA -->
-            <!-- ============================================ -->
-            <form method="POST" action="{{ url_for('login') }}">
+            <!-- Formulario de Respaldo con Validación en Tiempo Real -->
+            <form method="POST" action="{{ url_for('login') }}" id="loginForm" novalidate>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                
                 <div class="mb-3">
                     <label for="email" class="form-label">
                         <i class="bi bi-envelope-fill"></i> Correo institucional
                     </label>
-                    <input type="email" class="form-control" id="email" name="email" 
-                           placeholder="usuario@uniagraria.edu.co" required>
+                    <input type="email" 
+                           class="form-control" 
+                           id="email" 
+                           name="email" 
+                           placeholder="usuario@uniagraria.edu.co" 
+                           required
+                           pattern="[a-zA-Z0-9._%+-]+@uniagraria\.edu\.co$"
+                           title="Debe ser un correo institucional @uniagraria.edu.co"
+                           oninput="validateEmail(this)">
+                    <div class="invalid-feedback" id="emailError">
+                        Debe ser un correo institucional @uniagraria.edu.co
+                    </div>
                 </div>
+
                 <div class="mb-4">
                     <label for="password" class="form-label">
                         <i class="bi bi-lock-fill"></i> Contraseña
                     </label>
-                    <input type="password" class="form-control" id="password" name="password" 
-                           placeholder="••••••••" required>
+                    <div class="input-group">
+                        <input type="password" 
+                               class="form-control" 
+                               id="password" 
+                               name="password" 
+                               placeholder="••••••••" 
+                               required
+                               minlength="8"
+                               oninput="validatePassword(this)">
+                        <i class="bi bi-eye-slash password-toggle" id="togglePassword" onclick="togglePasswordVisibility()"></i>
+                    </div>
+                    <div class="password-strength">
+                        <div class="password-strength-bar" id="passwordStrength"></div>
+                    </div>
+                    <div class="invalid-feedback" id="passwordError">
+                        La contraseña debe tener al menos 8 caracteres
+                    </div>
                 </div>
-                <button type="submit" class="btn btn-login w-100">
+
+                <button type="submit" class="btn-login" id="submitBtn">
                     <i class="bi bi-box-arrow-in-right me-2"></i>Iniciar Sesión
                 </button>
             </form>
-            
+
+            <!-- Sección de Seguridad Mejorada -->
+            <div class="security-section">
+                <div class="security-badge">
+                    <span><i class="bi bi-shield-lock"></i> SSL/TLS</span>
+                    <span><i class="bi bi-2fa"></i> 2FA Ready</span>
+                    <span><i class="bi bi-incognito"></i> Azure AD</span>
+                </div>
+                <div class="security-badge mt-2">
+                    <span><i class="bi bi-cloud-check"></i> Cloud Sync</span>
+                    <span><i class="bi bi-database"></i> PostgreSQL</span>
+                    <span><i class="bi bi-images"></i> Cloudinary</span>
+                </div>
+                <div class="security-note text-muted">
+                    <i class="bi bi-check-circle-fill text-success"></i>
+                    Conexión segura · Datos encriptados
+                </div>
+            </div>
+
+            <!-- Footer -->
             <hr>
-            <div class="text-center text-muted small">
-                <p class="mb-0 mt-3">
+            <div class="footer-text text-muted small">
+                <p class="mb-1">
                     <i class="bi bi-shield-check me-1"></i>
                     Acceso exclusivo para personal autorizado
                 </p>
-                <p class="mb-0 mt-2">
+                <p class="mb-0">
                     <i class="bi bi-microsoft me-1"></i>
                     Microsoft 365 | Azure Active Directory
+                </p>
+                <p class="mt-2 mb-0">
+                    <i class="bi bi-database"></i> NeonTech PostgreSQL · 
+                    <i class="bi bi-cloud-upload"></i> Cloudinary CDN
                 </p>
             </div>
         </div>
     </div>
+
+    <!-- Scripts Mejorados -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // Configuración de seguridad
+        const SECURITY_CONFIG = {
+            minPasswordLength: 8,
+            allowedDomain: '@uniagraria.edu.co',
+            maxAttempts: 5,
+            lockoutTime: 15 * 60 * 1000 // 15 minutos
+        };
+
+        // Validación de email en tiempo real
+        function validateEmail(input) {
+            const email = input.value;
+            const pattern = /^[a-zA-Z0-9._%+-]+@uniagraria\.edu\.co$/;
+            const isValid = pattern.test(email);
+            
+            if (email && !isValid) {
+                input.classList.add('is-invalid');
+                document.getElementById('emailError').style.display = 'block';
+            } else {
+                input.classList.remove('is-invalid');
+                document.getElementById('emailError').style.display = 'none';
+            }
+            
+            return isValid;
+        }
+
+        // Validación de contraseña con medidor de fuerza
+        function validatePassword(input) {
+            const password = input.value;
+            const strengthBar = document.getElementById('passwordStrength');
+            let strength = 0;
+            
+            if (password.length >= 8) strength++;
+            if (password.match(/[a-z]+/)) strength++;
+            if (password.match(/[A-Z]+/)) strength++;
+            if (password.match(/[0-9]+/)) strength++;
+            if (password.match(/[$@#&!]+/)) strength++;
+            
+            // Actualizar barra de fuerza
+            strengthBar.className = 'password-strength-bar';
+            if (password.length === 0) {
+                strengthBar.style.width = '0';
+            } else if (strength <= 2) {
+                strengthBar.classList.add('strength-weak');
+            } else if (strength <= 4) {
+                strengthBar.classList.add('strength-medium');
+            } else {
+                strengthBar.classList.add('strength-strong');
+            }
+            
+            // Validar longitud mínima
+            const isValid = password.length >= SECURITY_CONFIG.minPasswordLength;
+            if (password && !isValid) {
+                input.classList.add('is-invalid');
+                document.getElementById('passwordError').style.display = 'block';
+            } else {
+                input.classList.remove('is-invalid');
+                document.getElementById('passwordError').style.display = 'none';
+            }
+            
+            return isValid;
+        }
+
+        // Toggle visibilidad de contraseña
+        function togglePasswordVisibility() {
+            const passwordInput = document.getElementById('password');
+            const toggleIcon = document.getElementById('togglePassword');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleIcon.classList.remove('bi-eye-slash');
+                toggleIcon.classList.add('bi-eye');
+            } else {
+                passwordInput.type = 'password';
+                toggleIcon.classList.remove('bi-eye');
+                toggleIcon.classList.add('bi-eye-slash');
+            }
+        }
+
+        // Manejar login con Microsoft
+        function handleMicrosoftLogin(event) {
+            const btn = event.currentTarget;
+            btn.classList.add('loading');
+            
+            // Rate limiting básico
+            const lastClick = localStorage.getItem('microsoftLastClick');
+            const now = Date.now();
+            
+            if (lastClick && (now - lastClick < 2000)) {
+                event.preventDefault();
+                btn.classList.remove('loading');
+                showAlert('Por favor espera 2 segundos entre intentos', 'warning');
+                return false;
+            }
+            
+            localStorage.setItem('microsoftLastClick', now);
+            
+            // Timeout de seguridad
+            setTimeout(() => {
+                btn.classList.remove('loading');
+            }, 3000);
+            
+            return true;
+        }
+
+        // Validación del formulario antes de enviar
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('email');
+            const password = document.getElementById('password');
+            const submitBtn = document.getElementById('submitBtn');
+            
+            // Validar campos
+            const isEmailValid = validateEmail(email);
+            const isPasswordValid = validatePassword(password);
+            
+            if (isEmailValid && isPasswordValid) {
+                // Rate limiting por intentos
+                const attempts = parseInt(localStorage.getItem('loginAttempts') || '0');
+                const lastAttempt = parseInt(localStorage.getItem('lastAttempt') || '0');
+                const now = Date.now();
+                
+                if (attempts >= SECURITY_CONFIG.maxAttempts) {
+                    if (now - lastAttempt < SECURITY_CONFIG.lockoutTime) {
+                        const waitTime = Math.ceil((SECURITY_CONFIG.lockoutTime - (now - lastAttempt)) / 60000);
+                        showAlert(`Demasiados intentos. Espera ${waitTime} minutos.`, 'danger');
+                        return;
+                    } else {
+                        localStorage.setItem('loginAttempts', '0');
+                    }
+                }
+                
+                // Mostrar loading
+                submitBtn.classList.add('loading');
+                submitBtn.disabled = true;
+                
+                // Incrementar intentos
+                localStorage.setItem('loginAttempts', (attempts + 1).toString());
+                localStorage.setItem('lastAttempt', now.toString());
+                
+                // Enviar formulario
+                this.submit();
+            } else {
+                showAlert('Por favor corrige los errores en el formulario', 'danger');
+            }
+        });
+
+        // Sistema de alertas personalizado
+        function showAlert(message, type) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+            alertDiv.innerHTML = `
+                <i class="bi bi-${type === 'danger' ? 'exclamation-triangle-fill' : 'info-circle-fill'}"></i>
+                <span>${message}</span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            const loginBody = document.querySelector('.login-body');
+            loginBody.insertBefore(alertDiv, loginBody.firstChild);
+            
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 5000);
+        }
+
+        // Protección contra XSS en inputs
+        document.querySelectorAll('input').forEach(input => {
+            input.addEventListener('input', function() {
+                this.value = this.value.replace(/[<>]/g, '');
+            });
+        });
+
+        // Detectar si es dispositivo móvil para mejorar UX
+        function isMobile() {
+            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        }
+
+        if (isMobile()) {
+            document.body.classList.add('mobile-device');
+            // Ajustar zoom para móviles
+            document.querySelector('meta[name="viewport"]').setAttribute('content', 
+                'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+        }
+
+        // Limpiar campos sensibles al salir de la página
+        window.addEventListener('beforeunload', function() {
+            const password = document.getElementById('password');
+            if (password) password.value = '';
+        });
+
+        // Protección contra copia de contraseña
+        document.getElementById('password').addEventListener('copy', function(e) {
+            e.preventDefault();
+            showAlert('No se permite copiar la contraseña por seguridad', 'warning');
+        });
+
+        document.getElementById('password').addEventListener('cut', function(e) {
+            e.preventDefault();
+            showAlert('No se permite cortar la contraseña por seguridad', 'warning');
+        });
+
+        // Timeout de sesión para el formulario (5 minutos)
+        let sessionTimeout;
+        function resetSessionTimeout() {
+            clearTimeout(sessionTimeout);
+            sessionTimeout = setTimeout(() => {
+                document.getElementById('password').value = '';
+                showAlert('Sesión expirada por inactividad. Por favor ingresa tu contraseña nuevamente.', 'warning');
+            }, 5 * 60 * 1000);
+        }
+
+        document.addEventListener('mousemove', resetSessionTimeout);
+        document.addEventListener('keypress', resetSessionTimeout);
+        resetSessionTimeout();
+
+        console.log('Sistema de login seguro inicializado correctamente');
+    </script>
 </body>
 </html>
