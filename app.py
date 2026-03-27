@@ -120,9 +120,9 @@ os.makedirs('static/plantillas', exist_ok=True)
 # ==============================================
 # CONFIGURACIÓN CLOUDINARY - CORREGIDA
 # ==============================================
-CLOUDINARY_CLOUD_NAME = 'dcplwmqpp'
-CLOUDINARY_API_KEY = '315877441477912'
-CLOUDINARY_API_SECRET = '_VMLEqXJBVYD70HzVfNOBaRWYjE'
+CLOUDINARY_CLOUD_NAME = 
+CLOUDINARY_API_KEY = 
+CLOUDINARY_API_SECRET = 
 
 print("=" * 50)
 print("🔵 CONFIGURACIÓN CLOUDINARY - VALORES ACTUALIZADOS")
