@@ -87,7 +87,7 @@ app.config['SESSION_REFRESH_EACH_REQUEST'] = True
 # ==============================================
 # CONFIGURACIÓN NEONTECH POSTGRESQL
 # ==============================================
-database_url = "postgresql://neondb_owner:npg_3bhmrtRwoiO8@ep-frosty-grass-ai2o51x9-pooler.c-4.us-east-1.aws.neon.tech/recoleccion?sslmode=require"
+database_url =
 
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
