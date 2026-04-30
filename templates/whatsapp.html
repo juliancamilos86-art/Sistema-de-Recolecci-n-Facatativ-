@@ -1,0 +1,489 @@
+{% extends "base.html" %}
+{% block title %}WhatsApp - UNIAGRARIA Facatativá 2026{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* ── Chat burbujas ── */
+  .chat-bubble {
+    max-width: 75%;
+    padding: 10px 14px;
+    border-radius: 18px;
+    font-size: 0.92rem;
+    line-height: 1.45;
+    word-break: break-word;
+    position: relative;
+  }
+  .bubble-entrante {
+    background: #f0f2f5;
+    color: #111;
+    border-bottom-left-radius: 4px;
+    align-self: flex-start;
+  }
+  .bubble-saliente {
+    background: #d9fdd3;
+    color: #111;
+    border-bottom-right-radius: 4px;
+    align-self: flex-end;
+  }
+  .chat-row {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 6px;
+  }
+  .chat-row.saliente { align-items: flex-end; }
+  .chat-row.entrante { align-items: flex-start; }
+  .chat-meta {
+    font-size: 0.72rem;
+    color: #888;
+    margin-top: 2px;
+    padding: 0 4px;
+  }
+  .chat-area {
+    height: 520px;
+    overflow-y: auto;
+    padding: 16px;
+    background: #efeae2 url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23c9c1b6' fill-opacity='0.15'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    border-radius: 0 0 12px 12px;
+    scroll-behavior: smooth;
+  }
+  .chat-date-divider {
+    text-align: center;
+    margin: 12px 0;
+  }
+  .chat-date-divider span {
+    background: rgba(255,255,255,0.75);
+    color: #555;
+    font-size: 0.75rem;
+    padding: 3px 12px;
+    border-radius: 20px;
+    backdrop-filter: blur(4px);
+  }
+
+  /* ── Tarjetas asesoras ── */
+  .asesora-card {
+    cursor: pointer;
+    border: 2px solid transparent;
+    border-radius: 14px;
+    transition: all .25s;
+  }
+  .asesora-card:hover, .asesora-card.activa {
+    border-color: var(--verde-uniagraria);
+    box-shadow: 0 4px 16px rgba(46,125,50,.18);
+    transform: translateY(-2px);
+  }
+  .wa-avatar {
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.4rem; font-weight: 700; color: #fff;
+    flex-shrink: 0;
+  }
+  .wa-online { width:10px; height:10px; border-radius:50%; background:#25D366; display:inline-block; }
+  .badge-entrante { background: #e8f5e9; color: #2E7D32; }
+  .badge-saliente { background: #e3f2fd; color: #1565c0; }
+
+  /* ── Header chat ── */
+  .chat-header {
+    background: var(--verde-uniagraria);
+    color: #fff;
+    padding: 12px 16px;
+    border-radius: 12px 12px 0 0;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .chat-header .wa-avatar { width:40px; height:40px; font-size:1rem; background: rgba(255,255,255,0.25); }
+
+  /* ── Filtros ── */
+  .filtro-panel {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+  }
+
+  /* ── Placeholder ── */
+  .chat-placeholder {
+    height: 520px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    color: #aaa; gap: 12px;
+    background: #efeae2;
+    border-radius: 0 0 12px 12px;
+  }
+
+  /* ── Spinner ── */
+  .wa-spinner {
+    width: 28px; height: 28px;
+    border: 3px solid #e0e0e0;
+    border-top-color: #25D366;
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Media preview ── */
+  .media-thumb {
+    max-width: 220px; max-height: 160px;
+    border-radius: 8px; margin-top: 4px;
+    cursor: pointer; object-fit: cover;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+
+  <!-- Encabezado -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h4 class="mb-0 fw-bold">
+        <i class="fab fa-whatsapp me-2" style="color:#25D366"></i>
+        Historial WhatsApp
+      </h4>
+      <small class="text-muted">Conversaciones de las asesoras · tiempo real</small>
+    </div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-sm btn-outline-success" onclick="actualizarStats()">
+        <i class="fas fa-sync-alt me-1"></i>Actualizar
+      </button>
+      <button class="btn btn-sm btn-uniagraria" id="btn-exportar" disabled
+              onclick="exportarHistorial()">
+        <i class="fas fa-file-excel me-1"></i>Exportar Excel
+      </button>
+    </div>
+  </div>
+
+  <div class="row g-3">
+
+    <!-- ── Panel izquierdo: selección de asesora ── -->
+    <div class="col-md-4">
+
+      <!-- Tarjetas asesoras -->
+      {% for key, nombre in asesoras %}
+      <div class="card card-uniagraria p-3 mb-3 asesora-card" id="card-{{ key }}"
+           onclick="seleccionarAsesora('{{ key }}', '{{ nombre }}')">
+        <div class="d-flex align-items-center gap-3">
+          <div class="wa-avatar"
+               style="background: {{ '#2E7D32' if loop.index == 1 else '#FF8F00' }}">
+            {{ nombre[:1] }}
+          </div>
+          <div class="flex-grow-1 min-w-0">
+            <div class="fw-semibold text-truncate">{{ nombre }}</div>
+            <div class="d-flex align-items-center gap-1 mt-1">
+              <span class="wa-online"></span>
+              <small class="text-muted">Monitoreada</small>
+            </div>
+          </div>
+          <div class="text-end">
+            <div class="fs-5 fw-bold text-success" id="stat-total-{{ key }}">—</div>
+            <small class="text-muted">mensajes</small>
+            <div class="mt-1">
+              <span class="badge bg-warning text-dark" id="stat-hoy-{{ key }}">— hoy</span>
+            </div>
+          </div>
+        </div>
+        <div class="mt-2 small text-muted" id="stat-ultimo-{{ key }}">
+          <i class="fas fa-clock me-1"></i>Último mensaje: —
+        </div>
+      </div>
+      {% endfor %}
+
+      <!-- Panel filtros -->
+      <div class="filtro-panel">
+        <div class="fw-semibold mb-2 small text-muted text-uppercase tracking-wider">
+          <i class="fas fa-filter me-1"></i>Filtros
+        </div>
+        <div class="mb-2">
+          <input type="text" class="form-control form-control-sm" id="filtro-buscar"
+                 placeholder="Buscar en mensajes..." oninput="debounceBuscar()">
+        </div>
+        <div class="row g-1 mb-2">
+          <div class="col-6">
+            <select class="form-select form-select-sm" id="filtro-tipo" onchange="cargarHistorial()">
+              <option value="">Todo tipo</option>
+              <option value="text">Texto</option>
+              <option value="image">Imagen</option>
+              <option value="audio">Audio</option>
+              <option value="video">Video</option>
+            </select>
+          </div>
+          <div class="col-6">
+            <select class="form-select form-select-sm" id="filtro-dir" onchange="cargarHistorial()">
+              <option value="">Ambas dir.</option>
+              <option value="entrante">↓ Entrante</option>
+              <option value="saliente">↑ Saliente</option>
+            </select>
+          </div>
+        </div>
+        <div class="row g-1">
+          <div class="col-6">
+            <input type="date" class="form-control form-control-sm" id="filtro-desde"
+                   onchange="cargarHistorial()" title="Desde">
+          </div>
+          <div class="col-6">
+            <input type="date" class="form-control form-control-sm" id="filtro-hasta"
+                   onchange="cargarHistorial()" title="Hasta">
+          </div>
+        </div>
+      </div>
+
+      <!-- Paginación -->
+      <div id="paginacion-panel" class="d-none">
+        <div class="d-flex align-items-center justify-content-between small text-muted mb-1">
+          <span id="info-paginacion"></span>
+          <div class="d-flex gap-1">
+            <button class="btn btn-sm btn-outline-secondary py-0 px-2" id="btn-prev"
+                    onclick="cambiarPagina(-1)" disabled>&laquo;</button>
+            <button class="btn btn-sm btn-outline-secondary py-0 px-2" id="btn-next"
+                    onclick="cambiarPagina(1)" disabled>&raquo;</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── Panel derecho: chat ── -->
+    <div class="col-md-8">
+
+      <!-- Header del chat -->
+      <div class="chat-header" id="chat-header" style="display:none!important">
+        <div class="wa-avatar" id="chat-avatar">A</div>
+        <div>
+          <div class="fw-semibold" id="chat-nombre">Asesora</div>
+          <small style="opacity:.8" id="chat-sub">Cargando...</small>
+        </div>
+        <div class="ms-auto d-flex gap-2">
+          <span class="badge bg-light text-success" id="chat-badge-total">0 msgs</span>
+        </div>
+      </div>
+
+      <!-- Área del chat -->
+      <div id="chat-placeholder" class="chat-placeholder card-uniagraria">
+        <i class="fab fa-whatsapp" style="font-size:3rem;color:#25D366;opacity:.5"></i>
+        <span class="fw-semibold" style="color:#999">Selecciona una asesora para ver sus conversaciones</span>
+      </div>
+
+      <div id="chat-area" class="chat-area d-none"></div>
+
+      <!-- Loading spinner -->
+      <div id="chat-loading" class="chat-placeholder d-none">
+        <div class="wa-spinner"></div>
+        <span class="text-muted small">Cargando mensajes...</span>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- Modal imagen full -->
+<div class="modal fade" id="modalImagen" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content border-0">
+      <div class="modal-body p-1">
+        <img id="modal-img-src" src="" class="img-fluid rounded w-100" alt="Imagen WhatsApp">
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+
+{% block extra_js %}
+<script>
+let asesoraActiva  = null;
+let nombreActiva   = null;
+let paginaActual   = 1;
+let totalPaginas   = 1;
+let debounceTimer  = null;
+
+// ── Seleccionar asesora ──────────────────────────────────────────────────────
+function seleccionarAsesora(key, nombre) {
+  asesoraActiva = key;
+  nombreActiva  = nombre;
+  paginaActual  = 1;
+
+  document.querySelectorAll('.asesora-card').forEach(c => c.classList.remove('activa'));
+  document.getElementById('card-' + key).classList.add('activa');
+
+  document.getElementById('chat-header').style.removeProperty('display');
+  document.getElementById('chat-avatar').textContent = nombre[0];
+  document.getElementById('chat-nombre').textContent = nombre;
+  document.getElementById('chat-sub').textContent = 'Cargando historial...';
+
+  document.getElementById('btn-exportar').disabled = false;
+  document.getElementById('paginacion-panel').classList.remove('d-none');
+
+  cargarHistorial();
+}
+
+// ── Cargar historial ─────────────────────────────────────────────────────────
+async function cargarHistorial(pagina = null) {
+  if (!asesoraActiva) return;
+  if (pagina !== null) paginaActual = pagina;
+
+  mostrarLoading(true);
+
+  const params = new URLSearchParams({
+    page:       paginaActual,
+    por_pagina: 50,
+    q:          document.getElementById('filtro-buscar').value,
+    tipo:       document.getElementById('filtro-tipo').value,
+    direccion:  document.getElementById('filtro-dir').value,
+    desde:      document.getElementById('filtro-desde').value,
+    hasta:      document.getElementById('filtro-hasta').value,
+  });
+
+  try {
+    const res  = await fetch(`/api/whatsapp/historial/${asesoraActiva}?${params}`);
+    const data = await res.json();
+
+    totalPaginas = data.paginas || 1;
+    renderChat(data.mensajes || []);
+    actualizarPaginacion(data);
+
+    document.getElementById('chat-badge-total').textContent = `${data.total} msgs`;
+    document.getElementById('chat-sub').textContent = `${data.total} mensajes · página ${paginaActual} de ${totalPaginas}`;
+  } catch(e) {
+    mostrarError('Error al cargar mensajes.');
+  } finally {
+    mostrarLoading(false);
+  }
+}
+
+// ── Renderizar burbujas ──────────────────────────────────────────────────────
+function renderChat(mensajes) {
+  const area = document.getElementById('chat-area');
+  area.classList.remove('d-none');
+  document.getElementById('chat-placeholder').classList.add('d-none');
+
+  if (!mensajes.length) {
+    area.innerHTML = `
+      <div class="text-center text-muted mt-5">
+        <i class="fas fa-inbox fa-2x mb-2 d-block opacity-50"></i>
+        No hay mensajes con los filtros aplicados.
+      </div>`;
+    return;
+  }
+
+  // Agrupar por fecha
+  const grupos = {};
+  mensajes.forEach(m => {
+    const fecha = m.timestamp ? m.timestamp.split('T')[0] : 'Sin fecha';
+    if (!grupos[fecha]) grupos[fecha] = [];
+    grupos[fecha].push(m);
+  });
+
+  let html = '';
+  Object.entries(grupos).forEach(([fecha, msgs]) => {
+    html += `<div class="chat-date-divider"><span>${formatFecha(fecha)}</span></div>`;
+    msgs.forEach(m => {
+      const esEntrante = m.direccion !== 'saliente';
+      const hora = m.timestamp ? new Date(m.timestamp).toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit'}) : '';
+      const iconDir = esEntrante ? '↓' : '↑';
+      const colorDir = esEntrante ? 'text-success' : 'text-primary';
+
+      let contenidoHtml = '';
+      if (m.tipo === 'image' && m.media_url) {
+        contenidoHtml = `
+          <img src="${escapeHtml(m.media_url)}" class="media-thumb"
+               alt="Imagen" onclick="verImagen('${escapeHtml(m.media_url)}')">
+          ${m.contenido ? `<div class="mt-1">${escapeHtml(m.contenido)}</div>` : ''}`;
+      } else if (m.tipo === 'audio' && m.media_url) {
+        contenidoHtml = `<audio controls src="${escapeHtml(m.media_url)}" class="mt-1" style="max-width:100%;height:36px"></audio>`;
+      } else if (m.tipo === 'video' && m.media_url) {
+        contenidoHtml = `<video controls src="${escapeHtml(m.media_url)}" class="media-thumb mt-1"></video>`;
+      } else {
+        contenidoHtml = escapeHtml(m.contenido || '(sin contenido)');
+      }
+
+      html += `
+        <div class="chat-row ${esEntrante ? 'entrante' : 'saliente'}">
+          <div class="chat-bubble ${esEntrante ? 'bubble-entrante' : 'bubble-saliente'}">
+            ${contenidoHtml}
+          </div>
+          <div class="chat-meta">
+            <span class="${colorDir} me-1">${iconDir}</span>
+            ${escapeHtml(m.remitente || '')} · ${hora}
+            ${m.tipo !== 'text' ? `<span class="badge ms-1 ${esEntrante ? 'badge-entrante' : 'badge-saliente'} rounded-pill">${m.tipo}</span>` : ''}
+          </div>
+        </div>`;
+    });
+  });
+
+  area.innerHTML = html;
+  area.scrollTop = area.scrollHeight;
+}
+
+// ── Stats tarjetas ───────────────────────────────────────────────────────────
+async function actualizarStats() {
+  try {
+    const res  = await fetch('/api/whatsapp/stats');
+    const data = await res.json();
+    Object.entries(data).forEach(([key, s]) => {
+      const el = id => document.getElementById(id);
+      if (el(`stat-total-${key}`)) el(`stat-total-${key}`).textContent = s.total.toLocaleString();
+      if (el(`stat-hoy-${key}`))  el(`stat-hoy-${key}`).textContent  = `${s.hoy} hoy`;
+      if (el(`stat-ultimo-${key}`) && s.ultimo_mensaje) {
+        el(`stat-ultimo-${key}`).innerHTML =
+          `<i class="fas fa-clock me-1"></i>Último: ${new Date(s.ultimo_mensaje).toLocaleString('es-CO')}`;
+      }
+    });
+  } catch(e) { console.warn('Stats error', e); }
+}
+
+// ── Paginación ───────────────────────────────────────────────────────────────
+function actualizarPaginacion(data) {
+  document.getElementById('info-paginacion').textContent =
+    `Página ${data.pagina} de ${data.paginas} (${data.total} total)`;
+  document.getElementById('btn-prev').disabled = data.pagina <= 1;
+  document.getElementById('btn-next').disabled = data.pagina >= data.paginas;
+}
+function cambiarPagina(dir) {
+  const nueva = paginaActual + dir;
+  if (nueva >= 1 && nueva <= totalPaginas) cargarHistorial(nueva);
+}
+
+// ── Exportar ─────────────────────────────────────────────────────────────────
+function exportarHistorial() {
+  if (!asesoraActiva) return;
+  window.location.href = `/api/whatsapp/exportar/${asesoraActiva}`;
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function verImagen(url) {
+  document.getElementById('modal-img-src').src = url;
+  new bootstrap.Modal(document.getElementById('modalImagen')).show();
+}
+function mostrarLoading(show) {
+  document.getElementById('chat-loading').classList.toggle('d-none', !show);
+  if (show) document.getElementById('chat-area').classList.add('d-none');
+}
+function mostrarError(msg) {
+  const area = document.getElementById('chat-area');
+  area.classList.remove('d-none');
+  area.innerHTML = `<div class="alert alert-danger m-3">${msg}</div>`;
+}
+function formatFecha(iso) {
+  if (!iso || iso === 'Sin fecha') return iso;
+  const d = new Date(iso + 'T00:00:00');
+  return d.toLocaleDateString('es-CO', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+}
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function debounceBuscar() {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => cargarHistorial(1), 400);
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  actualizarStats();
+  setInterval(actualizarStats, 30000); // refresh cada 30s
+});
+</script>
+{% endblock %}
