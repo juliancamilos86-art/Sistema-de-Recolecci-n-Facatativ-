@@ -179,7 +179,7 @@ WA_ASESORAS = {
 # Nombres para mostrar en la interfaz
 WA_NOMBRES = {
     'asesora1': 'Karen Valencia Pinto Ladino',
-    'asesora2': 'Ingrid',
+    'asesora2': 'Ingrid Del Rosario Maldonado Gonzales',
 }
 
 # ============================================================================
