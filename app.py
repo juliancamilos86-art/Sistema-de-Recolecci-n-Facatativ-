@@ -405,6 +405,226 @@ class ArchivoImportado(db.Model):
             'datos_metadata': self.datos_metadata
         }
 
+
+
+# ============================================================================
+# MÓDULO WHATSAPP - AGREGAR A app.py
+# ============================================================================
+# PASO 1: Pega este modelo junto a los demás modelos (después de ArchivoImportado)
+# PASO 2: Pega las rutas junto a las demás rutas
+# PASO 3: Modifica base.html (ver archivo base_whatsapp_sidebar.html)
+# PASO 4: Despliega whatsapp-service/ en un servidor separado o en la misma máquina
+# ============================================================================
+
+# ----------------------------------------------------------------------------
+# MODELO - va después de class ArchivoImportado(db.Model):
+# ----------------------------------------------------------------------------
+
+"""
+class MensajeWhatsApp(db.Model):
+    \"""Modelo para mensajes de WhatsApp de las asesoras\"""
+    __tablename__ = 'mensajes_whatsapp'
+
+    id            = db.Column(db.Integer, primary_key=True)
+    asesora       = db.Column(db.String(50), nullable=False, index=True)   # 'asesora1' | 'asesora2'
+    direccion     = db.Column(db.String(10), default='entrante')           # entrante | saliente
+    remitente     = db.Column(db.String(50))
+    destinatario  = db.Column(db.String(50))
+    tipo          = db.Column(db.String(20), default='text')               # text | image | audio | video
+    contenido     = db.Column(db.Text)
+    media_url     = db.Column(db.Text)
+    msg_id        = db.Column(db.String(120), unique=True, index=True)
+    timestamp     = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    fecha_registro= db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id':           self.id,
+            'asesora':      self.asesora,
+            'direccion':    self.direccion,
+            'remitente':    self.remitente,
+            'destinatario': self.destinatario,
+            'tipo':         self.tipo,
+            'contenido':    self.contenido,
+            'media_url':    self.media_url,
+            'msg_id':       self.msg_id,
+            'timestamp':    self.timestamp.isoformat() if self.timestamp else None,
+        }
+"""
+
+# ----------------------------------------------------------------------------
+# RUTAS - van al final de las rutas, antes del manejo de errores
+# ----------------------------------------------------------------------------
+
+"""
+# ============================================================================
+# MÓDULO WHATSAPP - HISTORIAL DE CONVERSACIONES
+# ============================================================================
+
+# Mapeo número → nombre asesora (ajusta con los números reales)
+WA_ASESORAS = {
+    '573001234567': 'asesora1',   # <--  número real
+    '573007654321': 'asesora2',   # <--  número real
+}
+
+WA_NOMBRES = {
+    'asesora1': 'Asesora 1',   # <--  nombre real
+    'asesora2': 'Asesora 2',   # <--  nombre real
+}
+
+@app.route('/whatsapp')
+@login_required
+def whatsapp():
+    \"""Página de historial WhatsApp\"""
+    asesoras = list(WA_NOMBRES.items())   # [('asesora1','Nombre'), ...]
+    return render_template('whatsapp.html', asesoras=asesoras, now=datetime.now)
+
+
+@app.route('/api/whatsapp/mensaje', methods=['POST'])
+def api_whatsapp_recibir():
+    \"""
+    Endpoint que llama el servicio Node.js para guardar cada mensaje.
+    Protegido con token secreto en cabecera X-WA-Token.
+    \"""
+    # Verificar token de seguridad (genera uno con: python -c "import secrets; print(secrets.token_hex(32))")
+    token = request.headers.get('X-WA-Token', '')
+    if token != os.environ.get('WA_SECRET_TOKEN', 'cambia-esto-en-.env'):
+        return jsonify({'error': 'No autorizado'}), 403
+
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({'error': 'JSON inválido'}), 400
+
+    # Evitar duplicados
+    if MensajeWhatsApp.query.filter_by(msg_id=data.get('msg_id')).first():
+        return jsonify({'status': 'duplicado'}), 200
+
+    try:
+        msg = MensajeWhatsApp(
+            asesora      = data.get('asesora', 'desconocida'),
+            direccion    = data.get('direccion', 'entrante'),
+            remitente    = data.get('remitente', ''),
+            destinatario = data.get('destinatario', ''),
+            tipo         = data.get('tipo', 'text'),
+            contenido    = data.get('contenido', ''),
+            media_url    = data.get('media_url'),
+            msg_id       = data.get('msg_id'),
+            timestamp    = datetime.fromisoformat(data['timestamp']) if data.get('timestamp') else datetime.utcnow(),
+        )
+        db.session.add(msg)
+        db.session.commit()
+        return jsonify({'status': 'ok', 'id': msg.id}), 201
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f'Error guardando WA mensaje: {e}')
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/whatsapp/historial/<asesora>')
+@login_required
+def api_whatsapp_historial(asesora):
+    \"""Historial paginado de mensajes por asesora\"""
+    page     = request.args.get('page', 1, type=int)
+    por_pag  = request.args.get('por_pagina', 50, type=int)
+    buscar   = request.args.get('q', '').strip()
+    tipo     = request.args.get('tipo')
+    direccion= request.args.get('direccion')
+    desde    = request.args.get('desde')
+    hasta    = request.args.get('hasta')
+
+    q = MensajeWhatsApp.query.filter_by(asesora=asesora)
+
+    if buscar:
+        q = q.filter(MensajeWhatsApp.contenido.ilike(f'%{buscar}%'))
+    if tipo:
+        q = q.filter_by(tipo=tipo)
+    if direccion:
+        q = q.filter_by(direccion=direccion)
+    if desde:
+        q = q.filter(MensajeWhatsApp.timestamp >= datetime.fromisoformat(desde))
+    if hasta:
+        q = q.filter(MensajeWhatsApp.timestamp <= datetime.fromisoformat(hasta))
+
+    pag = q.order_by(MensajeWhatsApp.timestamp.desc()).paginate(page=page, per_page=por_pag)
+
+    return jsonify({
+        'total':    pag.total,
+        'pagina':   pag.page,
+        'paginas':  pag.pages,
+        'mensajes': [m.to_dict() for m in pag.items],
+    })
+
+
+@app.route('/api/whatsapp/stats')
+@login_required
+def api_whatsapp_stats():
+    \"""Estadísticas globales del módulo WhatsApp\"""
+    stats = {}
+    for key, nombre in WA_NOMBRES.items():
+        total = MensajeWhatsApp.query.filter_by(asesora=key).count()
+        hoy   = MensajeWhatsApp.query.filter(
+            MensajeWhatsApp.asesora == key,
+            MensajeWhatsApp.timestamp >= datetime.utcnow().replace(hour=0, minute=0, second=0)
+        ).count()
+        ultimo = MensajeWhatsApp.query.filter_by(asesora=key).order_by(
+            MensajeWhatsApp.timestamp.desc()
+        ).first()
+        stats[key] = {
+            'nombre':       nombre,
+            'total':        total,
+            'hoy':          hoy,
+            'ultimo_mensaje': ultimo.timestamp.isoformat() if ultimo else None,
+        }
+    return jsonify(stats)
+
+
+@app.route('/api/whatsapp/exportar/<asesora>')
+@login_required
+def api_whatsapp_exportar(asesora):
+    \"""Exportar historial de asesora a Excel\"""
+    mensajes = MensajeWhatsApp.query.filter_by(asesora=asesora).order_by(
+        MensajeWhatsApp.timestamp.asc()
+    ).all()
+
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment
+
+    output = BytesIO()
+    wb = Workbook()
+    ws = wb.active
+    ws.title = f'Historial {WA_NOMBRES.get(asesora, asesora)}'
+
+    headers = ['Fecha/Hora', 'Dirección', 'Remitente', 'Destinatario', 'Tipo', 'Contenido', 'Media URL']
+    for col, h in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=h)
+        cell.font = Font(bold=True, color='FFFFFF')
+        cell.fill = PatternFill(start_color='25D366', end_color='25D366', fill_type='solid')
+        cell.alignment = Alignment(horizontal='center')
+
+    for row, m in enumerate(mensajes, 2):
+        ws.cell(row=row, column=1, value=m.timestamp.strftime('%Y-%m-%d %H:%M') if m.timestamp else '')
+        ws.cell(row=row, column=2, value='↓ Entrante' if m.direccion == 'entrante' else '↑ Saliente')
+        ws.cell(row=row, column=3, value=m.remitente)
+        ws.cell(row=row, column=4, value=m.destinatario)
+        ws.cell(row=row, column=5, value=m.tipo)
+        ws.cell(row=row, column=6, value=m.contenido)
+        ws.cell(row=row, column=7, value=m.media_url or '')
+
+    for col in ws.columns:
+        max_len = max((len(str(c.value or '')) for c in col), default=10)
+        ws.column_dimensions[col[0].column_letter].width = min(max_len + 2, 60)
+
+    wb.save(output)
+    output.seek(0)
+
+    nombre = WA_NOMBRES.get(asesora, asesora).replace(' ', '_')
+    return send_file(
+        output,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name=f'historial_wa_{nombre}_{datetime.now().strftime("%Y%m%d")}.xlsx'
+    )
+"""
 # ============================================================================
 # FUNCIONES AUXILIARES
 # ============================================================================
