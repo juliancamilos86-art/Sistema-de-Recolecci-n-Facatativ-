@@ -169,16 +169,17 @@ limiter = Limiter(
 # ============================================================================
 # CONFIGURACIÓN WHATSAPP
 # ============================================================================
+
 # Mapeo número → clave interna
 WA_ASESORAS = {
     '573212526461': 'asesora1',   # Karen Valencia Pinto Ladino
-    '000000000000': 'asesora2',   # ← reemplaza con el número real de la 2ª asesora
+    '573107694751': 'asesora2',   # Ingrid
 }
 
 # Nombres para mostrar en la interfaz
 WA_NOMBRES = {
     'asesora1': 'Karen Valencia Pinto Ladino',
-    'asesora2': 'Asesora 2',   # ← reemplaza con el nombre real
+    'asesora2': 'Ingrid',
 }
 
 # ============================================================================
