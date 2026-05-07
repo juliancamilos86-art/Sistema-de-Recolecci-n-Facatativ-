@@ -10,6 +10,7 @@ import io
 import csv
 import zipfile
 import secrets
+import re
 from datetime import datetime, timedelta
 from functools import wraps
 from io import BytesIO, StringIO
@@ -33,7 +34,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import generate_password_hash, check_password_hash
 
 # Base de datos
-from sqlalchemy import create_engine, text, func, and_, or_, desc
+from sqlalchemy import create_engine, text, func, and_, or_, desc, case
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 
 # Azure AD
@@ -61,7 +62,6 @@ from reportlab.lib.units import inch
 from reportlab.pdfgen import canvas
 
 # Utilidades
-import re
 from email_validator import validate_email, EmailNotValidError
 
 # Configuración de variables de entorno
@@ -165,6 +165,38 @@ limiter = Limiter(
     default_limits=["200 per day", "50 per hour"],
     strategy="fixed-window"
 )
+
+# ============================================================================
+# FUNCIÓN PARA VALIDAR SI UN CONTACTO ES VÁLIDO (NO ES SISTEMA)
+# ============================================================================
+
+def es_contacto_valido(contacto):
+    """Filtra contactos que NO son del sistema (status, grupos, IDs internos)"""
+    if not contacto:
+        return False
+    # Excluir mensajes de sistema
+    if contacto == 'status@broadcast':
+        return False
+    # Excluir IDs de grupos (terminan en @g.us)
+    if contacto.endswith('@g.us'):
+        return False
+    # Excluir IDs internos de WhatsApp (contienen @lid, etc)
+    if '@' in contacto and not contacto.endswith('@c.us'):
+        return False
+    # Debe ser un número de teléfono válido (solo dígitos, + y -)
+    telefono_limpio = re.sub(r'[^0-9]', '', contacto)
+    if len(telefono_limpio) < 8:
+        return False
+    return True
+
+def limpiar_numero_contacto(contacto):
+    """Limpia el número de contacto para mostrar (elimina sufijos como @c.us)"""
+    if not contacto:
+        return contacto
+    # Eliminar sufijo @c.us si existe
+    if contacto.endswith('@c.us'):
+        return contacto[:-5]
+    return contacto
 
 # ============================================================================
 # CONFIGURACIÓN WHATSAPP
@@ -416,10 +448,10 @@ class MensajeWhatsApp(db.Model):
 
     id             = db.Column(db.Integer, primary_key=True)
     asesora        = db.Column(db.String(50),  nullable=False, index=True)
-    direccion      = db.Column(db.String(10),  default='entrante')   # entrante | saliente
-    remitente      = db.Column(db.String(50))
-    destinatario   = db.Column(db.String(50))
-    tipo           = db.Column(db.String(20),  default='text')       # text | image | audio | video
+    direccion      = db.Column(db.String(10),  default='entrante')
+    remitente      = db.Column(db.String(100))
+    destinatario   = db.Column(db.String(100))
+    tipo           = db.Column(db.String(20),  default='text')
     contenido      = db.Column(db.Text)
     media_url      = db.Column(db.Text)
     msg_id         = db.Column(db.String(120), unique=True, index=True)
@@ -431,10 +463,10 @@ class MensajeWhatsApp(db.Model):
             'id':           self.id,
             'asesora':      self.asesora,
             'direccion':    self.direccion,
-            'remitente':    self.remitente,
-            'destinatario': self.destinatario,
+            'remitente':    limpiar_numero_contacto(self.remitente),
+            'destinatario': limpiar_numero_contacto(self.destinatario),
             'tipo':         self.tipo,
-            'contenido':    self.contenido,
+            'contenido':    self.contenido if self.contenido else '(sin contenido)',
             'media_url':    self.media_url,
             'msg_id':       self.msg_id,
             'timestamp':    self.timestamp.isoformat() if self.timestamp else None,
@@ -1235,7 +1267,7 @@ def whatsapp():
 # ENDPOINTS PÚBLICOS PARA LA API DE WHATSAPP (NO requieren autenticación)
 @app.route('/api/whatsapp/mensaje', methods=['POST', 'OPTIONS'])
 def api_whatsapp_recibir():
-    """Recibe mensajes del servicio Node.js - Endpoint PÚBLICO"""
+    """Recibe mensajes del servicio Node.js - Filtra mensajes de sistema"""
     
     if request.method == 'OPTIONS':
         response = make_response()
@@ -1243,17 +1275,30 @@ def api_whatsapp_recibir():
         response.headers.add('Access-Control-Allow-Headers', 'Content-Type, X-WA-Token')
         response.headers.add('Access-Control-Allow-Methods', 'POST')
         return response
-    
-    token = request.headers.get('X-WA-Token', '')
-    expected_token = os.environ.get('WA_SECRET_TOKEN', '8bb0f8801ed34b4bb418afe84f73bd294ead2b5302dd88f210b742f35617fab5')
-    
-    # Verificación de token (opcional - descomentar para producción)
-    # if token != expected_token:
-    #     return jsonify({'error': 'No autorizado'}), 403
 
     data = request.get_json(silent=True)
     if not data:
         return jsonify({'error': 'JSON inválido'}), 400
+
+    # ========== FILTRAR MENSAJES NO DESEADOS ==========
+    remitente = data.get('remitente', '')
+    destinatario = data.get('destinatario', '')
+    
+    # Ignorar mensajes de sistema/broadcast
+    if remitente == 'status@broadcast' or destinatario == 'status@broadcast':
+        return jsonify({'status': 'ignorado', 'reason': 'mensaje de sistema'}), 200
+    
+    # Ignorar IDs de grupos y otros IDs internos
+    if '@g.us' in remitente or '@g.us' in destinatario:
+        return jsonify({'status': 'ignorado', 'reason': 'mensaje de grupo'}), 200
+    
+    # Ignorar IDs internos de WhatsApp (contienen @lid, etc)
+    if '@' in remitente or '@' in destinatario:
+        # Solo permitir números de teléfono (que terminan en @c.us)
+        if remitente and not remitente.endswith('@c.us') and '@' in remitente:
+            return jsonify({'status': 'ignorado', 'reason': 'ID interno de WhatsApp'}), 200
+        if destinatario and not destinatario.endswith('@c.us') and '@' in destinatario:
+            return jsonify({'status': 'ignorado', 'reason': 'ID interno de WhatsApp'}), 200
 
     # Evitar duplicados
     if MensajeWhatsApp.query.filter_by(msg_id=data.get('msg_id')).first():
@@ -1266,7 +1311,7 @@ def api_whatsapp_recibir():
             remitente    = data.get('remitente', ''),
             destinatario = data.get('destinatario', ''),
             tipo         = data.get('tipo', 'text'),
-            contenido    = data.get('contenido', ''),
+            contenido    = data.get('contenido', '') or '(sin contenido)',
             media_url    = data.get('media_url'),
             msg_id       = data.get('msg_id'),
             timestamp    = datetime.fromisoformat(data['timestamp']) if data.get('timestamp') else datetime.utcnow(),
@@ -1282,15 +1327,28 @@ def api_whatsapp_recibir():
 
 @app.route('/api/whatsapp/stats', methods=['GET'])
 def api_whatsapp_stats():
-    """Estadísticas de WhatsApp - Endpoint PÚBLICO"""
+    """Estadísticas de WhatsApp - Solo contactos reales"""
     stats = {}
     for key, nombre in WA_NOMBRES.items():
-        total = MensajeWhatsApp.query.filter_by(asesora=key).count()
+        # Solo contar mensajes de contactos válidos
+        total = MensajeWhatsApp.query.filter(
+            MensajeWhatsApp.asesora == key,
+            MensajeWhatsApp.remitente != 'status@broadcast',
+            ~MensajeWhatsApp.remitente.like('%@g.us'),
+            ~MensajeWhatsApp.remitente.like('%@lid')
+        ).count()
+        
         hoy = MensajeWhatsApp.query.filter(
             MensajeWhatsApp.asesora == key,
-            MensajeWhatsApp.timestamp >= datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+            MensajeWhatsApp.timestamp >= datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0),
+            MensajeWhatsApp.remitente != 'status@broadcast'
         ).count()
-        ultimo = MensajeWhatsApp.query.filter_by(asesora=key).order_by(MensajeWhatsApp.timestamp.desc()).first()
+        
+        ultimo = MensajeWhatsApp.query.filter(
+            MensajeWhatsApp.asesora == key,
+            MensajeWhatsApp.remitente != 'status@broadcast'
+        ).order_by(MensajeWhatsApp.timestamp.desc()).first()
+        
         stats[key] = {
             'nombre': nombre,
             'total': total,
@@ -1302,7 +1360,7 @@ def api_whatsapp_stats():
 
 @app.route('/api/whatsapp/historial/<asesora>', methods=['GET'])
 def api_whatsapp_historial(asesora):
-    """Historial de mensajes - Endpoint PÚBLICO"""
+    """Historial de mensajes - Excluye mensajes de sistema"""
     page = request.args.get('page', 1, type=int)
     por_pag = request.args.get('por_pagina', 50, type=int)
     buscar = request.args.get('q', '').strip()
@@ -1311,7 +1369,11 @@ def api_whatsapp_historial(asesora):
     desde = request.args.get('desde')
     hasta = request.args.get('hasta')
 
-    q = MensajeWhatsApp.query.filter_by(asesora=asesora)
+    q = MensajeWhatsApp.query.filter(
+        MensajeWhatsApp.asesora == asesora,
+        MensajeWhatsApp.remitente != 'status@broadcast',
+        ~MensajeWhatsApp.remitente.like('%@g.us')
+    )
     if buscar:    q = q.filter(MensajeWhatsApp.contenido.ilike(f'%{buscar}%'))
     if tipo:      q = q.filter_by(tipo=tipo)
     if direccion: q = q.filter_by(direccion=direccion)
@@ -1326,6 +1388,135 @@ def api_whatsapp_historial(asesora):
         'paginas': pag.pages,
         'mensajes': [m.to_dict() for m in pag.items],
     })
+
+
+@app.route('/api/whatsapp/conversaciones/<asesora>', methods=['GET'])
+def api_whatsapp_conversaciones(asesora):
+    """Obtener lista de conversaciones agrupadas por contacto real"""
+    
+    try:
+        # Obtener contactos únicos de mensajes entrantes
+        contactos_entrantes = db.session.query(
+            MensajeWhatsApp.remitente.label('contacto'),
+            func.count(MensajeWhatsApp.id).label('total_entrantes'),
+            func.max(MensajeWhatsApp.timestamp).label('ultimo_entrante')
+        ).filter(
+            MensajeWhatsApp.asesora == asesora,
+            MensajeWhatsApp.direccion == 'entrante',
+            MensajeWhatsApp.remitente.isnot(None),
+            MensajeWhatsApp.remitente != '',
+            MensajeWhatsApp.remitente != 'status@broadcast',
+            ~MensajeWhatsApp.remitente.like('%@g.us'),
+            ~MensajeWhatsApp.remitente.like('%@lid')
+        ).group_by(MensajeWhatsApp.remitente).subquery()
+        
+        # Obtener contactos únicos de mensajes salientes
+        contactos_salientes = db.session.query(
+            MensajeWhatsApp.destinatario.label('contacto'),
+            func.count(MensajeWhatsApp.id).label('total_salientes'),
+            func.max(MensajeWhatsApp.timestamp).label('ultimo_saliente')
+        ).filter(
+            MensajeWhatsApp.asesora == asesora,
+            MensajeWhatsApp.direccion == 'saliente',
+            MensajeWhatsApp.destinatario.isnot(None),
+            MensajeWhatsApp.destinatario != '',
+            MensajeWhatsApp.destinatario != 'status@broadcast',
+            ~MensajeWhatsApp.destinatario.like('%@g.us'),
+            ~MensajeWhatsApp.destinatario.like('%@lid')
+        ).group_by(MensajeWhatsApp.destinatario).subquery()
+        
+        # Unir ambas consultas
+        query = db.session.query(
+            func.coalesce(contactos_entrantes.c.contacto, contactos_salientes.c.contacto).label('contacto'),
+            func.coalesce(contactos_entrantes.c.total_entrantes, 0).label('recibidos'),
+            func.coalesce(contactos_salientes.c.total_salientes, 0).label('enviados'),
+            func.coalesce(contactos_entrantes.c.ultimo_entrante, contactos_salientes.c.ultimo_saliente).label('ultimo_mensaje')
+        ).select_from(
+            contactos_entrantes
+        ).outerjoin(
+            contactos_salientes,
+            contactos_entrantes.c.contacto == contactos_salientes.c.contacto
+        ).union(
+            db.session.query(
+                contactos_salientes.c.contacto.label('contacto'),
+                func.coalesce(contactos_entrantes.c.total_entrantes, 0).label('recibidos'),
+                func.coalesce(contactos_salientes.c.total_salientes, 0).label('enviados'),
+                func.coalesce(contactos_entrantes.c.ultimo_entrante, contactos_salientes.c.ultimo_saliente).label('ultimo_mensaje')
+            ).select_from(
+                contactos_salientes
+            ).outerjoin(
+                contactos_entrantes,
+                contactos_salientes.c.contacto == contactos_entrantes.c.contacto
+            )
+        ).order_by(
+            func.coalesce(contactos_entrantes.c.ultimo_entrante, contactos_salientes.c.ultimo_saliente).desc()
+        ).all()
+        
+        resultado = []
+        for conv in query:
+            contacto_limpio = limpiar_numero_contacto(conv.contacto)
+            ultimo = MensajeWhatsApp.query.filter(
+                MensajeWhatsApp.asesora == asesora,
+                (MensajeWhatsApp.remitente == conv.contacto) | (MensajeWhatsApp.destinatario == conv.contacto)
+            ).order_by(MensajeWhatsApp.timestamp.desc()).first()
+            
+            resultado.append({
+                'contacto': contacto_limpio,
+                'contacto_raw': conv.contacto,
+                'total_mensajes': (conv.recibidos or 0) + (conv.enviados or 0),
+                'recibidos': conv.recibidos or 0,
+                'enviados': conv.enviados or 0,
+                'ultimo_mensaje': conv.ultimo_mensaje.isoformat() if conv.ultimo_mensaje else None,
+                'ultimo_contenido': (ultimo.contenido[:100] if ultimo and ultimo.contenido else '(sin contenido)'),
+                'ultimo_direccion': ultimo.direccion if ultimo else ''
+            })
+        
+        return jsonify(resultado)
+        
+    except Exception as e:
+        app.logger.error(f"Error en conversaciones: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/whatsapp/conversacion/<asesora>/<contacto>', methods=['GET'])
+def api_whatsapp_conversacion(asesora, contacto):
+    """Obtener mensajes de una conversación específica"""
+    
+    try:
+        page = request.args.get('page', 1, type=int)
+        por_pag = request.args.get('por_pagina', 50, type=int)
+        
+        # Buscar el contacto en la base de datos (puede tener @c.us)
+        contacto_busqueda = contacto
+        if not contacto.endswith('@c.us') and not contacto.startswith('+'):
+            # Buscar en ambas formas
+            q = MensajeWhatsApp.query.filter(
+                MensajeWhatsApp.asesora == asesora,
+                (MensajeWhatsApp.remitente.like(f'%{contacto}%')) | (MensajeWhatsApp.destinatario.like(f'%{contacto}%')),
+                MensajeWhatsApp.remitente != 'status@broadcast',
+                ~MensajeWhatsApp.remitente.like('%@g.us')
+            ).order_by(MensajeWhatsApp.timestamp.asc())
+        else:
+            q = MensajeWhatsApp.query.filter(
+                MensajeWhatsApp.asesora == asesora,
+                (MensajeWhatsApp.remitente == contacto) | (MensajeWhatsApp.destinatario == contacto),
+                MensajeWhatsApp.remitente != 'status@broadcast',
+                ~MensajeWhatsApp.remitente.like('%@g.us')
+            ).order_by(MensajeWhatsApp.timestamp.asc())
+        
+        pag = q.paginate(page=page, per_page=por_pag, error_out=False)
+        
+        return jsonify({
+            'contacto': limpiar_numero_contacto(contacto),
+            'total': pag.total,
+            'pagina': pag.page,
+            'paginas': pag.pages,
+            'mensajes': [m.to_dict() for m in pag.items]
+        })
+        
+    except Exception as e:
+        app.logger.error(f"Error en conversacion: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/api/whatsapp/exportar/<asesora>')
@@ -1348,10 +1539,10 @@ def api_whatsapp_exportar(asesora):
     for row, m in enumerate(mensajes, 2):
         ws.cell(row=row, column=1, value=m.timestamp.strftime('%Y-%m-%d %H:%M') if m.timestamp else '')
         ws.cell(row=row, column=2, value='↓ Entrante' if m.direccion == 'entrante' else '↑ Saliente')
-        ws.cell(row=row, column=3, value=m.remitente)
-        ws.cell(row=row, column=4, value=m.destinatario)
+        ws.cell(row=row, column=3, value=limpiar_numero_contacto(m.remitente))
+        ws.cell(row=row, column=4, value=limpiar_numero_contacto(m.destinatario))
         ws.cell(row=row, column=5, value=m.tipo)
-        ws.cell(row=row, column=6, value=m.contenido)
+        ws.cell(row=row, column=6, value=m.contenido or '(sin contenido)')
         ws.cell(row=row, column=7, value=m.media_url or '')
 
     for col in ws.columns:
