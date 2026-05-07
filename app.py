@@ -1265,6 +1265,10 @@ def api_detalles_importacion(id):
 # MÓDULO WHATSAPP - RUTAS
 # ============================================================================
 
+# ============================================================================
+# MÓDULO WHATSAPP - RUTAS (VERSIÓN CORREGIDA - NO FILTRA @lid)
+# ============================================================================
+
 # Página web de WhatsApp (requiere login)
 @app.route('/whatsapp')
 @login_required
@@ -1276,7 +1280,7 @@ def whatsapp():
 # ENDPOINTS PÚBLICOS PARA LA API DE WHATSAPP (NO requieren autenticación)
 @app.route('/api/whatsapp/mensaje', methods=['POST', 'OPTIONS'])
 def api_whatsapp_recibir():
-    """Recibe mensajes del servicio Node.js - Filtra mensajes de sistema"""
+    """Recibe mensajes del servicio Node.js - SIN filtrar @lid"""
     
     if request.method == 'OPTIONS':
         response = make_response()
@@ -1289,25 +1293,17 @@ def api_whatsapp_recibir():
     if not data:
         return jsonify({'error': 'JSON inválido'}), 400
 
-    # ========== FILTRAR MENSAJES NO DESEADOS ==========
     remitente = data.get('remitente', '')
     destinatario = data.get('destinatario', '')
     
-    # Ignorar mensajes de sistema/broadcast
+    # SOLO filtrar mensajes de sistema y grupos (NO filtrar @lid)
     if remitente == 'status@broadcast' or destinatario == 'status@broadcast':
         return jsonify({'status': 'ignorado', 'reason': 'mensaje de sistema'}), 200
     
-    # Ignorar IDs de grupos y otros IDs internos
     if '@g.us' in remitente or '@g.us' in destinatario:
         return jsonify({'status': 'ignorado', 'reason': 'mensaje de grupo'}), 200
     
-    # Ignorar IDs internos de WhatsApp (contienen @lid, etc)
-    if '@' in remitente or '@' in destinatario:
-        # Solo permitir números de teléfono (que terminan en @c.us)
-        if remitente and not remitente.endswith('@c.us') and '@' in remitente:
-            return jsonify({'status': 'ignorado', 'reason': 'ID interno de WhatsApp'}), 200
-        if destinatario and not destinatario.endswith('@c.us') and '@' in destinatario:
-            return jsonify({'status': 'ignorado', 'reason': 'ID interno de WhatsApp'}), 200
+    # IMPORTANTE: NO filtramos @lid - son contactos válidos de WhatsApp
 
     # Evitar duplicados
     if MensajeWhatsApp.query.filter_by(msg_id=data.get('msg_id')).first():
@@ -1317,8 +1313,8 @@ def api_whatsapp_recibir():
         msg = MensajeWhatsApp(
             asesora      = data.get('asesora', 'desconocida'),
             direccion    = data.get('direccion', 'entrante'),
-            remitente    = data.get('remitente', ''),
-            destinatario = data.get('destinatario', ''),
+            remitente    = remitente,
+            destinatario = destinatario,
             tipo         = data.get('tipo', 'text'),
             contenido    = data.get('contenido', '') or '(sin contenido)',
             media_url    = data.get('media_url'),
@@ -1327,6 +1323,7 @@ def api_whatsapp_recibir():
         )
         db.session.add(msg)
         db.session.commit()
+        print(f"✅ Mensaje guardado: ID={msg.id} | Asesora={msg.asesora} | Remitente={msg.remitente}")
         return jsonify({'status': 'ok', 'id': msg.id}), 201
     except Exception as e:
         db.session.rollback()
@@ -1336,28 +1333,15 @@ def api_whatsapp_recibir():
 
 @app.route('/api/whatsapp/stats', methods=['GET'])
 def api_whatsapp_stats():
-    """Estadísticas de WhatsApp - Solo contactos reales"""
+    """Estadísticas de WhatsApp - Endpoint PÚBLICO"""
     stats = {}
     for key, nombre in WA_NOMBRES.items():
-        # Solo contar mensajes de contactos válidos
-        total = MensajeWhatsApp.query.filter(
-            MensajeWhatsApp.asesora == key,
-            MensajeWhatsApp.remitente != 'status@broadcast',
-            ~MensajeWhatsApp.remitente.like('%@g.us'),
-            ~MensajeWhatsApp.remitente.like('%@lid')
-        ).count()
-        
+        total = MensajeWhatsApp.query.filter_by(asesora=key).count()
         hoy = MensajeWhatsApp.query.filter(
             MensajeWhatsApp.asesora == key,
-            MensajeWhatsApp.timestamp >= datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0),
-            MensajeWhatsApp.remitente != 'status@broadcast'
+            MensajeWhatsApp.timestamp >= datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
         ).count()
-        
-        ultimo = MensajeWhatsApp.query.filter(
-            MensajeWhatsApp.asesora == key,
-            MensajeWhatsApp.remitente != 'status@broadcast'
-        ).order_by(MensajeWhatsApp.timestamp.desc()).first()
-        
+        ultimo = MensajeWhatsApp.query.filter_by(asesora=key).order_by(MensajeWhatsApp.timestamp.desc()).first()
         stats[key] = {
             'nombre': nombre,
             'total': total,
@@ -1369,15 +1353,11 @@ def api_whatsapp_stats():
 
 @app.route('/api/whatsapp/historial/<asesora>', methods=['GET'])
 def api_whatsapp_historial(asesora):
+    """Historial de mensajes - Endpoint PÚBLICO"""
     page = request.args.get('page', 1, type=int)
     por_pag = request.args.get('por_pagina', 50, type=int)
 
-    q = MensajeWhatsApp.query.filter(
-        MensajeWhatsApp.asesora == asesora,
-        MensajeWhatsApp.remitente != 'status@broadcast',
-        ~MensajeWhatsApp.remitente.like('%@g.us')
-        # NO filtrar @lid
-    )
+    q = MensajeWhatsApp.query.filter_by(asesora=asesora)
     pag = q.order_by(MensajeWhatsApp.timestamp.desc()).paginate(page=page, per_page=por_pag)
 
     return jsonify({
@@ -1387,17 +1367,18 @@ def api_whatsapp_historial(asesora):
         'mensajes': [m.to_dict() for m in pag.items],
     })
 
+
 @app.route('/api/whatsapp/conversaciones/<asesora>', methods=['GET'])
 def api_whatsapp_conversaciones(asesora):
-    """Obtener lista de conversaciones agrupadas por contacto real - INCLUYE @lid"""
-    
+    """Lista de conversaciones agrupadas por contacto - Endpoint PÚBLICO"""
     try:
-        # Diccionario para almacenar resultados únicos
-        conversaciones_dict = {}
+        from sqlalchemy import func
         
-        # 1. Obtener contactos de mensajes ENTRANTES (NO filtrar @lid)
+        conversaciones = {}
+        
+        # Mensajes ENTRANTES
         entrantes = db.session.query(
-            MensajeWhatsApp.remitente.label('contacto'),
+            MensajeWhatsApp.remitente,
             func.count(MensajeWhatsApp.id).label('total'),
             func.max(MensajeWhatsApp.timestamp).label('ultimo')
         ).filter(
@@ -1407,22 +1388,19 @@ def api_whatsapp_conversaciones(asesora):
             MensajeWhatsApp.remitente != '',
             MensajeWhatsApp.remitente != 'status@broadcast',
             ~MensajeWhatsApp.remitente.like('%@g.us')
-            # ELIMINADO: ~MensajeWhatsApp.remitente.like('%@lid')
         ).group_by(MensajeWhatsApp.remitente).all()
         
-        for c in entrantes:
-            contacto_limpio = limpiar_numero_contacto(c.contacto)
-            if contacto_limpio:
-                conversaciones_dict[contacto_limpio] = {
-                    'contacto': contacto_limpio,
-                    'recibidos': c.total,
+        for r in entrantes:
+            if r.remitente:
+                conversaciones[r.remitente] = {
+                    'recibidos': r.total,
                     'enviados': 0,
-                    'ultimo_mensaje': c.ultimo.isoformat() if c.ultimo else None
+                    'ultimo': r.ultimo
                 }
         
-        # 2. Obtener contactos de mensajes SALIENTES (NO filtrar @lid)
+        # Mensajes SALIENTES
         salientes = db.session.query(
-            MensajeWhatsApp.destinatario.label('contacto'),
+            MensajeWhatsApp.destinatario,
             func.count(MensajeWhatsApp.id).label('total'),
             func.max(MensajeWhatsApp.timestamp).label('ultimo')
         ).filter(
@@ -1432,82 +1410,62 @@ def api_whatsapp_conversaciones(asesora):
             MensajeWhatsApp.destinatario != '',
             MensajeWhatsApp.destinatario != 'status@broadcast',
             ~MensajeWhatsApp.destinatario.like('%@g.us')
-            # ELIMINADO: ~MensajeWhatsApp.destinatario.like('%@lid')
         ).group_by(MensajeWhatsApp.destinatario).all()
         
-        for c in salientes:
-            contacto_limpio = limpiar_numero_contacto(c.contacto)
-            if contacto_limpio:
-                if contacto_limpio in conversaciones_dict:
-                    conversaciones_dict[contacto_limpio]['enviados'] = c.total
-                    if c.ultimo and (not conversaciones_dict[contacto_limpio]['ultimo_mensaje'] or 
-                       c.ultimo.isoformat() > conversaciones_dict[contacto_limpio]['ultimo_mensaje']):
-                        conversaciones_dict[contacto_limpio]['ultimo_mensaje'] = c.ultimo.isoformat()
+        for r in salientes:
+            if r.destinatario:
+                if r.destinatario in conversaciones:
+                    conversaciones[r.destinatario]['enviados'] = r.total
+                    if r.ultimo and r.ultimo > conversaciones[r.destinatario]['ultimo']:
+                        conversaciones[r.destinatario]['ultimo'] = r.ultimo
                 else:
-                    conversaciones_dict[contacto_limpio] = {
-                        'contacto': contacto_limpio,
+                    conversaciones[r.destinatario] = {
                         'recibidos': 0,
-                        'enviados': c.total,
-                        'ultimo_mensaje': c.ultimo.isoformat() if c.ultimo else None
+                        'enviados': r.total,
+                        'ultimo': r.ultimo
                     }
         
-        # 3. Convertir a lista y ordenar
         resultado = []
-        for contacto, data in conversaciones_dict.items():
+        for contacto, data in conversaciones.items():
             ultimo_msg = MensajeWhatsApp.query.filter(
                 MensajeWhatsApp.asesora == asesora,
-                (MensajeWhatsApp.remitente == contacto) | 
-                (MensajeWhatsApp.destinatario == contacto)
+                (MensajeWhatsApp.remitente == contacto) | (MensajeWhatsApp.destinatario == contacto)
             ).order_by(MensajeWhatsApp.timestamp.desc()).first()
             
             resultado.append({
-                'contacto': data['contacto'],
+                'contacto': contacto,
                 'total_mensajes': data['recibidos'] + data['enviados'],
                 'recibidos': data['recibidos'],
                 'enviados': data['enviados'],
-                'ultimo_mensaje': data['ultimo_mensaje'],
-                'ultimo_contenido': (ultimo_msg.contenido[:80] if ultimo_msg and ultimo_msg.contenido else '(sin contenido)'),
+                'ultimo_mensaje': data['ultimo'].isoformat() if data['ultimo'] else None,
+                'ultimo_contenido': ultimo_msg.contenido[:80] if ultimo_msg else '',
                 'ultimo_direccion': ultimo_msg.direccion if ultimo_msg else ''
             })
         
         resultado.sort(key=lambda x: x['ultimo_mensaje'] or '', reverse=True)
-        
         return jsonify(resultado)
         
     except Exception as e:
         app.logger.error(f"Error en conversaciones: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+
 @app.route('/api/whatsapp/conversacion/<asesora>/<contacto>', methods=['GET'])
 def api_whatsapp_conversacion(asesora, contacto):
-    """Obtener mensajes de una conversación específica"""
-    
+    """Mensajes con un contacto específico - Endpoint PÚBLICO"""
     try:
         page = request.args.get('page', 1, type=int)
         por_pag = request.args.get('por_pagina', 50, type=int)
         
-        # Buscar el contacto en la base de datos (puede tener @c.us)
-        contacto_busqueda = contacto
-        if not contacto.endswith('@c.us') and not contacto.startswith('+'):
-            # Buscar en ambas formas
-            q = MensajeWhatsApp.query.filter(
-                MensajeWhatsApp.asesora == asesora,
-                (MensajeWhatsApp.remitente.like(f'%{contacto}%')) | (MensajeWhatsApp.destinatario.like(f'%{contacto}%')),
-                MensajeWhatsApp.remitente != 'status@broadcast',
-                ~MensajeWhatsApp.remitente.like('%@g.us')
-            ).order_by(MensajeWhatsApp.timestamp.asc())
-        else:
-            q = MensajeWhatsApp.query.filter(
-                MensajeWhatsApp.asesora == asesora,
-                (MensajeWhatsApp.remitente == contacto) | (MensajeWhatsApp.destinatario == contacto),
-                MensajeWhatsApp.remitente != 'status@broadcast',
-                ~MensajeWhatsApp.remitente.like('%@g.us')
-            ).order_by(MensajeWhatsApp.timestamp.asc())
+        q = MensajeWhatsApp.query.filter(
+            MensajeWhatsApp.asesora == asesora,
+            (MensajeWhatsApp.remitente == contacto) | (MensajeWhatsApp.destinatario == contacto)
+        ).order_by(MensajeWhatsApp.timestamp.asc())
         
         pag = q.paginate(page=page, per_page=por_pag, error_out=False)
         
         return jsonify({
-            'contacto': limpiar_numero_contacto(contacto),
+            'contacto': contacto,
             'total': pag.total,
             'pagina': pag.page,
             'paginas': pag.pages,
@@ -1539,8 +1497,8 @@ def api_whatsapp_exportar(asesora):
     for row, m in enumerate(mensajes, 2):
         ws.cell(row=row, column=1, value=m.timestamp.strftime('%Y-%m-%d %H:%M') if m.timestamp else '')
         ws.cell(row=row, column=2, value='↓ Entrante' if m.direccion == 'entrante' else '↑ Saliente')
-        ws.cell(row=row, column=3, value=limpiar_numero_contacto(m.remitente))
-        ws.cell(row=row, column=4, value=limpiar_numero_contacto(m.destinatario))
+        ws.cell(row=row, column=3, value=m.remitente)
+        ws.cell(row=row, column=4, value=m.destinatario)
         ws.cell(row=row, column=5, value=m.tipo)
         ws.cell(row=row, column=6, value=m.contenido or '(sin contenido)')
         ws.cell(row=row, column=7, value=m.media_url or '')
@@ -1557,7 +1515,6 @@ def api_whatsapp_exportar(asesora):
                      mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                      as_attachment=True,
                      download_name=f'historial_wa_{nombre}_{datetime.now().strftime("%Y%m%d")}.xlsx')
-
 
 # ============================================================================
 # MANEJO DE ERRORES
