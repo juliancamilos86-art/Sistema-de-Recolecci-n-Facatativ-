@@ -165,106 +165,7 @@ limiter = Limiter(
     default_limits=["200 per day", "50 per hour"],
     strategy="fixed-window"
 )
-# ============================================================================
-# ENDPOINTS PÚBLICOS PARA WHATSAPP (NO REQUIEREN AUTENTICACIÓN)
-# ============================================================================
 
-@app.route('/api/whatsapp/mensaje', methods=['POST', 'OPTIONS'])
-def api_whatsapp_recibir():
-    """Recibe mensajes del servicio Node.js - Endpoint PÚBLICO"""
-    
-    if request.method == 'OPTIONS':
-        response = make_response()
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type, X-WA-Token')
-        response.headers.add('Access-Control-Allow-Methods', 'POST')
-        return response
-    
-    # Verificar token (opcional)
-    token = request.headers.get('X-WA-Token', '')
-    expected_token = os.environ.get('WA_SECRET_TOKEN', '8bb0f8801ed34b4bb418afe84f73bd294ead2b5302dd88f210b742f35617fab5')
-    
-    # Si quieres seguridad, descomenta la siguiente línea:
-    # if token != expected_token:
-    #     return jsonify({'error': 'No autorizado'}), 403
-    
-    data = request.get_json(silent=True)
-    if not data:
-        return jsonify({'error': 'JSON inválido'}), 400
-    
-    # Evitar duplicados
-    if MensajeWhatsApp.query.filter_by(msg_id=data.get('msg_id')).first():
-        return jsonify({'status': 'duplicado'}), 200
-    
-    try:
-        msg = MensajeWhatsApp(
-            asesora      = data.get('asesora', 'desconocida'),
-            direccion    = data.get('direccion', 'entrante'),
-            remitente    = data.get('remitente', ''),
-            destinatario = data.get('destinatario', ''),
-            tipo         = data.get('tipo', 'text'),
-            contenido    = data.get('contenido', ''),
-            media_url    = data.get('media_url'),
-            msg_id       = data.get('msg_id'),
-            timestamp    = datetime.fromisoformat(data['timestamp']) if data.get('timestamp') else datetime.utcnow(),
-        )
-        db.session.add(msg)
-        db.session.commit()
-        return jsonify({'status': 'ok', 'id': msg.id}), 201
-    except Exception as e:
-        db.session.rollback()
-        app.logger.error(f'Error guardando WA mensaje: {e}')
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route('/api/whatsapp/stats', methods=['GET'])
-def api_whatsapp_stats():
-    """Estadísticas de WhatsApp - Endpoint PÚBLICO"""
-    
-    stats = {}
-    for key, nombre in WA_NOMBRES.items():
-        total = MensajeWhatsApp.query.filter_by(asesora=key).count()
-        hoy = MensajeWhatsApp.query.filter(
-            MensajeWhatsApp.asesora == key,
-            MensajeWhatsApp.timestamp >= datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
-        ).count()
-        ultimo = MensajeWhatsApp.query.filter_by(asesora=key).order_by(MensajeWhatsApp.timestamp.desc()).first()
-        stats[key] = {
-            'nombre': nombre,
-            'total': total,
-            'hoy': hoy,
-            'ultimo_mensaje': ultimo.timestamp.isoformat() if ultimo else None,
-        }
-    return jsonify(stats)
-
-
-@app.route('/api/whatsapp/historial/<asesora>', methods=['GET'])
-def api_whatsapp_historial(asesora):
-    """Historial de mensajes - Endpoint PÚBLICO"""
-    
-    page = request.args.get('page', 1, type=int)
-    por_pag = request.args.get('por_pagina', 50, type=int)
-    buscar = request.args.get('q', '').strip()
-    tipo = request.args.get('tipo')
-    direccion = request.args.get('direccion')
-    desde = request.args.get('desde')
-    hasta = request.args.get('hasta')
-    
-    q = MensajeWhatsApp.query.filter_by(asesora=asesora)
-    if buscar:    q = q.filter(MensajeWhatsApp.contenido.ilike(f'%{buscar}%'))
-    if tipo:      q = q.filter_by(tipo=tipo)
-    if direccion: q = q.filter_by(direccion=direccion)
-    if desde:     q = q.filter(MensajeWhatsApp.timestamp >= datetime.fromisoformat(desde))
-    if hasta:     q = q.filter(MensajeWhatsApp.timestamp <= datetime.fromisoformat(hasta))
-    
-    pag = q.order_by(MensajeWhatsApp.timestamp.desc()).paginate(page=page, per_page=por_pag)
-    
-    return jsonify({
-        'total': pag.total,
-        'pagina': pag.page,
-        'paginas': pag.pages,
-        'mensajes': [m.to_dict() for m in pag.items],
-    })
 # ============================================================================
 # CONFIGURACIÓN WHATSAPP
 # ============================================================================
@@ -1323,6 +1224,7 @@ def api_detalles_importacion(id):
 # MÓDULO WHATSAPP - RUTAS
 # ============================================================================
 
+# Página web de WhatsApp (requiere login)
 @app.route('/whatsapp')
 @login_required
 def whatsapp():
@@ -1330,12 +1232,24 @@ def whatsapp():
     return render_template('whatsapp.html', asesoras=asesoras, now=datetime.now)
 
 
-@app.route('/api/whatsapp/mensaje', methods=['POST'])
+# ENDPOINTS PÚBLICOS PARA LA API DE WHATSAPP (NO requieren autenticación)
+@app.route('/api/whatsapp/mensaje', methods=['POST', 'OPTIONS'])
 def api_whatsapp_recibir():
-    """Recibe mensajes del servicio Node.js. Protegido con token."""
+    """Recibe mensajes del servicio Node.js - Endpoint PÚBLICO"""
+    
+    if request.method == 'OPTIONS':
+        response = make_response()
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type, X-WA-Token')
+        response.headers.add('Access-Control-Allow-Methods', 'POST')
+        return response
+    
     token = request.headers.get('X-WA-Token', '')
-    if token != os.environ.get('WA_SECRET_TOKEN', ''):
-        return jsonify({'error': 'No autorizado'}), 403
+    expected_token = os.environ.get('WA_SECRET_TOKEN', '8bb0f8801ed34b4bb418afe84f73bd294ead2b5302dd88f210b742f35617fab5')
+    
+    # Verificación de token (opcional - descomentar para producción)
+    # if token != expected_token:
+    #     return jsonify({'error': 'No autorizado'}), 403
 
     data = request.get_json(silent=True)
     if not data:
@@ -1366,16 +1280,36 @@ def api_whatsapp_recibir():
         return jsonify({'error': str(e)}), 500
 
 
-@app.route('/api/whatsapp/historial/<asesora>')
-@login_required
+@app.route('/api/whatsapp/stats', methods=['GET'])
+def api_whatsapp_stats():
+    """Estadísticas de WhatsApp - Endpoint PÚBLICO"""
+    stats = {}
+    for key, nombre in WA_NOMBRES.items():
+        total = MensajeWhatsApp.query.filter_by(asesora=key).count()
+        hoy = MensajeWhatsApp.query.filter(
+            MensajeWhatsApp.asesora == key,
+            MensajeWhatsApp.timestamp >= datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        ).count()
+        ultimo = MensajeWhatsApp.query.filter_by(asesora=key).order_by(MensajeWhatsApp.timestamp.desc()).first()
+        stats[key] = {
+            'nombre': nombre,
+            'total': total,
+            'hoy': hoy,
+            'ultimo_mensaje': ultimo.timestamp.isoformat() if ultimo else None,
+        }
+    return jsonify(stats)
+
+
+@app.route('/api/whatsapp/historial/<asesora>', methods=['GET'])
 def api_whatsapp_historial(asesora):
-    page      = request.args.get('page', 1, type=int)
-    por_pag   = request.args.get('por_pagina', 50, type=int)
-    buscar    = request.args.get('q', '').strip()
-    tipo      = request.args.get('tipo')
+    """Historial de mensajes - Endpoint PÚBLICO"""
+    page = request.args.get('page', 1, type=int)
+    por_pag = request.args.get('por_pagina', 50, type=int)
+    buscar = request.args.get('q', '').strip()
+    tipo = request.args.get('tipo')
     direccion = request.args.get('direccion')
-    desde     = request.args.get('desde')
-    hasta     = request.args.get('hasta')
+    desde = request.args.get('desde')
+    hasta = request.args.get('hasta')
 
     q = MensajeWhatsApp.query.filter_by(asesora=asesora)
     if buscar:    q = q.filter(MensajeWhatsApp.contenido.ilike(f'%{buscar}%'))
@@ -1387,31 +1321,11 @@ def api_whatsapp_historial(asesora):
     pag = q.order_by(MensajeWhatsApp.timestamp.desc()).paginate(page=page, per_page=por_pag)
 
     return jsonify({
-        'total':    pag.total,
-        'pagina':   pag.page,
-        'paginas':  pag.pages,
+        'total': pag.total,
+        'pagina': pag.page,
+        'paginas': pag.pages,
         'mensajes': [m.to_dict() for m in pag.items],
     })
-
-
-@app.route('/api/whatsapp/stats')
-@login_required
-def api_whatsapp_stats():
-    stats = {}
-    for key, nombre in WA_NOMBRES.items():
-        total  = MensajeWhatsApp.query.filter_by(asesora=key).count()
-        hoy    = MensajeWhatsApp.query.filter(
-            MensajeWhatsApp.asesora == key,
-            MensajeWhatsApp.timestamp >= datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
-        ).count()
-        ultimo = MensajeWhatsApp.query.filter_by(asesora=key).order_by(MensajeWhatsApp.timestamp.desc()).first()
-        stats[key] = {
-            'nombre':         nombre,
-            'total':          total,
-            'hoy':            hoy,
-            'ultimo_mensaje': ultimo.timestamp.isoformat() if ultimo else None,
-        }
-    return jsonify(stats)
 
 
 @app.route('/api/whatsapp/exportar/<asesora>')
