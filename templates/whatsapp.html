@@ -3,7 +3,29 @@
 
 {% block extra_css %}
 <style>
-  /* ── Chat burbujas ── */
+  /* ── Estilos base ── */
+  :root {
+    --wa-green: #25D366;
+    --wa-teal: #075E54;
+    --wa-light: #DCF8C6;
+    --wa-gray: #ECE5DD;
+  }
+  
+  /* ── Layout conversaciones ── */
+  .conversacion-item {
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-left: 3px solid transparent;
+  }
+  .conversacion-item:hover {
+    background-color: #f0f2f5;
+  }
+  .conversacion-item.active {
+    background-color: #e8f5e9;
+    border-left-color: var(--wa-green);
+  }
+  
+  /* ── Burbujas de chat mejoradas ── */
   .chat-bubble {
     max-width: 75%;
     padding: 10px 14px;
@@ -12,15 +34,16 @@
     line-height: 1.45;
     word-break: break-word;
     position: relative;
+    box-shadow: 0 1px 0.5px rgba(0,0,0,0.05);
   }
   .bubble-entrante {
-    background: #f0f2f5;
+    background: #ffffff;
     color: #111;
     border-bottom-left-radius: 4px;
     align-self: flex-start;
   }
   .bubble-saliente {
-    background: #d9fdd3;
+    background: var(--wa-light);
     color: #111;
     border-bottom-right-radius: 4px;
     align-self: flex-end;
@@ -28,15 +51,15 @@
   .chat-row {
     display: flex;
     flex-direction: column;
-    margin-bottom: 6px;
+    margin-bottom: 8px;
   }
   .chat-row.saliente { align-items: flex-end; }
   .chat-row.entrante { align-items: flex-start; }
   .chat-meta {
-    font-size: 0.72rem;
-    color: #888;
+    font-size: 0.7rem;
+    color: #667781;
     margin-top: 2px;
-    padding: 0 4px;
+    padding: 0 6px;
   }
   .chat-area {
     height: 520px;
@@ -46,19 +69,22 @@
     border-radius: 0 0 12px 12px;
     scroll-behavior: smooth;
   }
+  
+  /* ── Divisor de fechas ── */
   .chat-date-divider {
     text-align: center;
-    margin: 12px 0;
+    margin: 16px 0;
   }
   .chat-date-divider span {
-    background: rgba(255,255,255,0.75);
-    color: #555;
-    font-size: 0.75rem;
-    padding: 3px 12px;
+    background: rgba(0,0,0,0.08);
+    color: #54656f;
+    font-size: 0.7rem;
+    padding: 4px 12px;
     border-radius: 20px;
     backdrop-filter: blur(4px);
+    font-weight: 500;
   }
-
+  
   /* ── Tarjetas asesoras ── */
   .asesora-card {
     cursor: pointer;
@@ -67,8 +93,8 @@
     transition: all .25s;
   }
   .asesora-card:hover, .asesora-card.activa {
-    border-color: var(--verde-uniagraria);
-    box-shadow: 0 4px 16px rgba(46,125,50,.18);
+    border-color: var(--wa-green);
+    box-shadow: 0 4px 12px rgba(37,211,102,.2);
     transform: translateY(-2px);
   }
   .wa-avatar {
@@ -78,21 +104,19 @@
     font-size: 1.4rem; font-weight: 700; color: #fff;
     flex-shrink: 0;
   }
-  .wa-online { width:10px; height:10px; border-radius:50%; background:#25D366; display:inline-block; }
-  .badge-entrante { background: #e8f5e9; color: #2E7D32; }
-  .badge-saliente { background: #e3f2fd; color: #1565c0; }
-
+  .wa-online { width: 10px; height: 10px; border-radius: 50%; background: var(--wa-green); display: inline-block; margin-right: 6px; }
+  
   /* ── Header chat ── */
   .chat-header {
-    background: var(--verde-uniagraria);
+    background: var(--wa-teal);
     color: #fff;
     padding: 12px 16px;
     border-radius: 12px 12px 0 0;
     display: flex; align-items: center; gap: 12px;
   }
-  .chat-header .wa-avatar { width:40px; height:40px; font-size:1rem; background: rgba(255,255,255,0.25); }
-
-  /* ── Filtros ── */
+  .chat-header .wa-avatar { width: 40px; height: 40px; font-size: 1rem; background: rgba(255,255,255,0.2); }
+  
+  /* ── Filtros y badges ── */
   .filtro-panel {
     background: #f8f9fa;
     border: 1px solid #e9ecef;
@@ -100,8 +124,11 @@
     padding: 14px 16px;
     margin-bottom: 14px;
   }
-
-  /* ── Placeholder ── */
+  .badge-entrante { background: #e8f5e9; color: #2E7D32; }
+  .badge-saliente { background: #e3f2fd; color: #1565c0; }
+  .badge-llamada { background: #fff3e0; color: #ef6c00; }
+  
+  /* ── Placeholder y loading ── */
   .chat-placeholder {
     height: 520px;
     display: flex; flex-direction: column;
@@ -110,22 +137,40 @@
     background: #efeae2;
     border-radius: 0 0 12px 12px;
   }
-
-  /* ── Spinner ── */
   .wa-spinner {
-    width: 28px; height: 28px;
+    width: 32px; height: 32px;
     border: 3px solid #e0e0e0;
-    border-top-color: #25D366;
+    border-top-color: var(--wa-green);
     border-radius: 50%;
     animation: spin .7s linear infinite;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
-
+  
   /* ── Media preview ── */
   .media-thumb {
-    max-width: 220px; max-height: 160px;
-    border-radius: 8px; margin-top: 4px;
-    cursor: pointer; object-fit: cover;
+    max-width: 200px;
+    max-height: 150px;
+    border-radius: 12px;
+    margin-top: 6px;
+    cursor: pointer;
+    object-fit: cover;
+    border: 1px solid rgba(0,0,0,0.1);
+  }
+  
+  /* ── Contacto item ── */
+  .contacto-preview {
+    font-size: 0.85rem;
+    color: #667781;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .contacto-numero {
+    font-family: monospace;
+    background: #f0f2f5;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 0.7rem;
   }
 </style>
 {% endblock %}
@@ -134,7 +179,7 @@
 <div class="fade-in">
 
   <!-- Encabezado -->
-  <div class="d-flex justify-content-between align-items-center mb-4">
+  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
     <div>
       <h4 class="mb-0 fw-bold">
         <i class="fab fa-whatsapp me-2" style="color:#25D366"></i>
@@ -146,8 +191,7 @@
       <button class="btn btn-sm btn-outline-success" onclick="actualizarStats()">
         <i class="fas fa-sync-alt me-1"></i>Actualizar
       </button>
-      <button class="btn btn-sm btn-uniagraria" id="btn-exportar" disabled
-              onclick="exportarHistorial()">
+      <button class="btn btn-sm btn-uniagraria" id="btn-exportar" disabled onclick="exportarHistorial()">
         <i class="fas fa-file-excel me-1"></i>Exportar Excel
       </button>
     </div>
@@ -155,16 +199,15 @@
 
   <div class="row g-3">
 
-    <!-- ── Panel izquierdo: selección de asesora ── -->
-    <div class="col-md-4">
+    <!-- PANEL IZQUIERDO: SELECCIÓN DE ASESORA + CONVERSACIONES -->
+    <div class="col-md-5 col-lg-4">
 
       <!-- Tarjetas asesoras -->
       {% for key, nombre in asesoras %}
       <div class="card card-uniagraria p-3 mb-3 asesora-card" id="card-{{ key }}"
            onclick="seleccionarAsesora('{{ key }}', '{{ nombre }}')">
         <div class="d-flex align-items-center gap-3">
-          <div class="wa-avatar"
-               style="background: {{ '#2E7D32' if loop.index == 1 else '#FF8F00' }}">
+          <div class="wa-avatar" style="background: {{ '#075E54' if loop.first else '#128C7E' }}">
             {{ nombre[:1] }}
           </div>
           <div class="flex-grow-1 min-w-0">
@@ -188,71 +231,33 @@
       </div>
       {% endfor %}
 
-      <!-- Panel filtros -->
-      <div class="filtro-panel">
-        <div class="fw-semibold mb-2 small text-muted text-uppercase tracking-wider">
-          <i class="fas fa-filter me-1"></i>Filtros
-        </div>
-        <div class="mb-2">
-          <input type="text" class="form-control form-control-sm" id="filtro-buscar"
-                 placeholder="Buscar en mensajes..." oninput="debounceBuscar()">
-        </div>
-        <div class="row g-1 mb-2">
-          <div class="col-6">
-            <select class="form-select form-select-sm" id="filtro-tipo" onchange="cargarHistorial()">
-              <option value="">Todo tipo</option>
-              <option value="text">Texto</option>
-              <option value="image">Imagen</option>
-              <option value="audio">Audio</option>
-              <option value="video">Video</option>
-            </select>
-          </div>
-          <div class="col-6">
-            <select class="form-select form-select-sm" id="filtro-dir" onchange="cargarHistorial()">
-              <option value="">Ambas dir.</option>
-              <option value="entrante">↓ Entrante</option>
-              <option value="saliente">↑ Saliente</option>
-            </select>
+      <!-- LISTA DE CONVERSACIONES (CONTACTOS) -->
+      <div id="conversaciones-container" class="card border-0 shadow-sm rounded-3" style="overflow: hidden; display: none;">
+        <div class="bg-white p-3 border-bottom">
+          <div class="fw-semibold small text-muted text-uppercase">
+            <i class="fas fa-users me-1"></i>Conversaciones
           </div>
         </div>
-        <div class="row g-1">
-          <div class="col-6">
-            <input type="date" class="form-control form-control-sm" id="filtro-desde"
-                   onchange="cargarHistorial()" title="Desde">
-          </div>
-          <div class="col-6">
-            <input type="date" class="form-control form-control-sm" id="filtro-hasta"
-                   onchange="cargarHistorial()" title="Hasta">
-          </div>
-        </div>
-      </div>
-
-      <!-- Paginación -->
-      <div id="paginacion-panel" class="d-none">
-        <div class="d-flex align-items-center justify-content-between small text-muted mb-1">
-          <span id="info-paginacion"></span>
-          <div class="d-flex gap-1">
-            <button class="btn btn-sm btn-outline-secondary py-0 px-2" id="btn-prev"
-                    onclick="cambiarPagina(-1)" disabled>&laquo;</button>
-            <button class="btn btn-sm btn-outline-secondary py-0 px-2" id="btn-next"
-                    onclick="cambiarPagina(1)" disabled>&raquo;</button>
+        <div id="lista-conversaciones" class="list-group list-group-flush" style="max-height: 420px; overflow-y: auto;">
+          <div class="text-center p-4 text-muted">
+            <i class="fas fa-spinner fa-spin"></i> Cargando contactos...
           </div>
         </div>
       </div>
 
     </div>
 
-    <!-- ── Panel derecho: chat ── -->
-    <div class="col-md-8">
+    <!-- PANEL DERECHO: CHAT -->
+    <div class="col-md-7 col-lg-8">
 
       <!-- Header del chat -->
-      <div class="chat-header" id="chat-header" style="display:none!important">
+      <div class="chat-header" id="chat-header" style="display: none;">
         <div class="wa-avatar" id="chat-avatar">A</div>
-        <div>
+        <div class="flex-grow-1">
           <div class="fw-semibold" id="chat-nombre">Asesora</div>
-          <small style="opacity:.8" id="chat-sub">Cargando...</small>
+          <small style="opacity:.8" id="chat-sub">Selecciona una conversación</small>
         </div>
-        <div class="ms-auto d-flex gap-2">
+        <div class="ms-auto">
           <span class="badge bg-light text-success" id="chat-badge-total">0 msgs</span>
         </div>
       </div>
@@ -260,12 +265,10 @@
       <!-- Área del chat -->
       <div id="chat-placeholder" class="chat-placeholder card-uniagraria">
         <i class="fab fa-whatsapp" style="font-size:3rem;color:#25D366;opacity:.5"></i>
-        <span class="fw-semibold" style="color:#999">Selecciona una asesora para ver sus conversaciones</span>
+        <span class="fw-semibold" style="color:#999">Selecciona una asesora y luego una conversación</span>
       </div>
 
       <div id="chat-area" class="chat-area d-none"></div>
-
-      <!-- Loading spinner -->
       <div id="chat-loading" class="chat-placeholder d-none">
         <div class="wa-spinner"></div>
         <span class="text-muted small">Cargando mensajes...</span>
@@ -273,10 +276,9 @@
 
     </div>
   </div>
-
 </div>
 
-<!-- Modal imagen full -->
+<!-- Modal para imágenes -->
 <div class="modal fade" id="modalImagen" tabindex="-1">
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content border-0">
@@ -288,71 +290,163 @@
 </div>
 {% endblock %}
 
-
 {% block extra_js %}
 <script>
-let asesoraActiva  = null;
-let nombreActiva   = null;
-let paginaActual   = 1;
-let totalPaginas   = 1;
-let debounceTimer  = null;
+// ============================================================================
+// ESTADO GLOBAL
+// ============================================================================
+let asesoraActiva = null;
+let nombreActiva = null;
+let contactoActivo = null;
+let conversacionesCache = [];
 
-// ── Seleccionar asesora ──────────────────────────────────────────────────────
-function seleccionarAsesora(key, nombre) {
+// ============================================================================
+// SELECCIÓN DE ASESORA
+// ============================================================================
+async function seleccionarAsesora(key, nombre) {
   asesoraActiva = key;
-  nombreActiva  = nombre;
-  paginaActual  = 1;
+  nombreActiva = nombre;
+  contactoActivo = null;
 
+  // UI: resaltar tarjeta
   document.querySelectorAll('.asesora-card').forEach(c => c.classList.remove('activa'));
   document.getElementById('card-' + key).classList.add('activa');
 
-  document.getElementById('chat-header').style.removeProperty('display');
+  // Mostrar header
+  document.getElementById('chat-header').style.display = 'flex';
   document.getElementById('chat-avatar').textContent = nombre[0];
   document.getElementById('chat-nombre').textContent = nombre;
-  document.getElementById('chat-sub').textContent = 'Cargando historial...';
+  document.getElementById('chat-sub').textContent = 'Cargando conversaciones...';
 
   document.getElementById('btn-exportar').disabled = false;
-  document.getElementById('paginacion-panel').classList.remove('d-none');
 
-  cargarHistorial();
+  // Ocultar chat hasta seleccionar contacto
+  document.getElementById('chat-area').classList.add('d-none');
+  document.getElementById('chat-placeholder').classList.remove('d-none');
+  document.getElementById('chat-placeholder').innerHTML = `
+    <i class="fab fa-whatsapp" style="font-size:3rem;color:#25D366;opacity:.5"></i>
+    <span class="fw-semibold" style="color:#999">Selecciona una conversación</span>
+  `;
+
+  // Cargar conversaciones
+  await cargarConversaciones();
 }
 
-// ── Cargar historial ─────────────────────────────────────────────────────────
-async function cargarHistorial(pagina = null) {
+// ============================================================================
+// CARGAR LISTA DE CONVERSACIONES (CONTACTOS ÚNICOS)
+// ============================================================================
+async function cargarConversaciones() {
   if (!asesoraActiva) return;
-  if (pagina !== null) paginaActual = pagina;
+
+  const container = document.getElementById('conversaciones-container');
+  const lista = document.getElementById('lista-conversaciones');
+
+  container.style.display = 'block';
+  lista.innerHTML = `<div class="text-center p-4 text-muted"><i class="fas fa-spinner fa-spin"></i> Cargando contactos...</div>`;
+
+  try {
+    const res = await fetch(`/api/whatsapp/conversaciones/${asesoraActiva}`);
+    if (!res.ok) throw new Error('Error cargando conversaciones');
+    
+    conversacionesCache = await res.json();
+    
+    if (!conversacionesCache.length) {
+      lista.innerHTML = `
+        <div class="text-center p-4 text-muted">
+          <i class="fas fa-comment-slash fa-2x mb-2 d-block opacity-50"></i>
+          No hay conversaciones con contactos reales
+        </div>`;
+      return;
+    }
+
+    lista.innerHTML = conversacionesCache.map(conv => `
+      <div class="list-group-item list-group-item-action conversacion-item p-3" 
+           data-contacto="${escapeHtml(conv.contacto)}"
+           onclick="seleccionarConversacion('${escapeHtml(conv.contacto)}')">
+        <div class="d-flex align-items-center gap-3">
+          <div class="wa-avatar" style="width:48px;height:48px;background:linear-gradient(135deg,#128C7E,#075E54)">
+            ${conv.contacto ? conv.contacto.slice(-3).replace(/\D/g,'') || '📱' : '📱'}
+          </div>
+          <div class="flex-grow-1 min-w-0">
+            <div class="fw-semibold text-truncate">
+              ${escapeHtml(conv.contacto)}
+            </div>
+            <div class="contacto-preview">
+              ${conv.recibidos > 0 ? `<span class="text-success">↓ ${conv.recibidos}</span>` : ''}
+              ${conv.enviados > 0 ? `<span class="text-primary">↑ ${conv.enviados}</span>` : ''}
+              <span class="contacto-numero">${conv.total_mensajes} msgs</span>
+            </div>
+            <div class="small text-muted text-truncate mt-1" style="max-width:200px">
+              ${conv.ultimo_contenido ? (conv.ultimo_contenido.length > 40 ? conv.ultimo_contenido.substring(0,40)+'...' : conv.ultimo_contenido) : '—'}
+            </div>
+          </div>
+          <div class="text-end">
+            <small class="text-muted">${conv.ultimo_mensaje ? new Date(conv.ultimo_mensaje).toLocaleDateString('es-CO', {day:'2-digit', month:'2-digit'}) : ''}</small>
+          </div>
+        </div>
+      </div>
+    `).join('');
+
+    document.getElementById('chat-sub').textContent = `${conversacionesCache.length} contactos · selecciona uno`;
+
+  } catch(e) {
+    console.error(e);
+    lista.innerHTML = `<div class="text-center p-4 text-danger"><i class="fas fa-exclamation-triangle"></i> Error cargando contactos</div>`;
+  }
+}
+
+// ============================================================================
+// SELECCIONAR CONVERSACIÓN
+// ============================================================================
+async function seleccionarConversacion(contacto) {
+  if (!asesoraActiva) return;
+  contactoActivo = contacto;
+
+  // UI: resaltar item seleccionado
+  document.querySelectorAll('.conversacion-item').forEach(el => {
+    el.classList.remove('active', 'bg-light');
+  });
+  const seleccionado = document.querySelector(`.conversacion-item[data-contacto="${contacto.replace(/"/g, '&quot;')}"]`);
+  if (seleccionado) seleccionado.classList.add('active', 'bg-light');
+
+  document.getElementById('chat-nombre').textContent = nombreActiva;
+  document.getElementById('chat-sub').textContent = `Conversando con ${contacto}...`;
+  document.getElementById('chat-placeholder').classList.add('d-none');
+
+  await cargarMensajesConversacion(contacto, 1);
+}
+
+// ============================================================================
+// CARGAR MENSAJES DE UNA CONVERSACIÓN
+// ============================================================================
+async function cargarMensajesConversacion(contacto, page = 1) {
+  if (!asesoraActiva || !contacto) return;
 
   mostrarLoading(true);
 
-  const params = new URLSearchParams({
-    page:       paginaActual,
-    por_pagina: 50,
-    q:          document.getElementById('filtro-buscar').value,
-    tipo:       document.getElementById('filtro-tipo').value,
-    direccion:  document.getElementById('filtro-dir').value,
-    desde:      document.getElementById('filtro-desde').value,
-    hasta:      document.getElementById('filtro-hasta').value,
-  });
-
   try {
-    const res  = await fetch(`/api/whatsapp/historial/${asesoraActiva}?${params}`);
+    const res = await fetch(`/api/whatsapp/conversacion/${asesoraActiva}/${encodeURIComponent(contacto)}?page=${page}&por_pagina=50`);
     const data = await res.json();
 
-    totalPaginas = data.paginas || 1;
-    renderChat(data.mensajes || []);
-    actualizarPaginacion(data);
+    if (!res.ok) throw new Error(data.error || 'Error cargando mensajes');
 
-    document.getElementById('chat-badge-total').textContent = `${data.total} msgs`;
-    document.getElementById('chat-sub').textContent = `${data.total} mensajes · página ${paginaActual} de ${totalPaginas}`;
+    renderChatConversacion(data.mensajes || [], contacto);
+    
+    document.getElementById('chat-badge-total').textContent = `${data.total} mensajes`;
+    document.getElementById('chat-sub').innerHTML = `<i class="fab fa-whatsapp me-1"></i>${contacto} · ${data.total} mensajes`;
+
   } catch(e) {
-    mostrarError('Error al cargar mensajes.');
+    console.error(e);
+    mostrarError('Error al cargar los mensajes');
   } finally {
     mostrarLoading(false);
   }
 }
 
-// ── Renderizar burbujas ──────────────────────────────────────────────────────
-function renderChat(mensajes) {
+// ============================================================================
+// RENDERIZAR CHAT (basado en mensajes de una conversación específica)
+// ============================================================================
+function renderChatConversacion(mensajes, contacto) {
   const area = document.getElementById('chat-area');
   area.classList.remove('d-none');
   document.getElementById('chat-placeholder').classList.add('d-none');
@@ -360,8 +454,8 @@ function renderChat(mensajes) {
   if (!mensajes.length) {
     area.innerHTML = `
       <div class="text-center text-muted mt-5">
-        <i class="fas fa-inbox fa-2x mb-2 d-block opacity-50"></i>
-        No hay mensajes con los filtros aplicados.
+        <i class="fas fa-comment-dots fa-2x mb-2 d-block opacity-50"></i>
+        No hay mensajes con ${escapeHtml(contacto)}
       </div>`;
     return;
   }
@@ -382,19 +476,20 @@ function renderChat(mensajes) {
       const hora = m.timestamp ? new Date(m.timestamp).toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit'}) : '';
       const iconDir = esEntrante ? '↓' : '↑';
       const colorDir = esEntrante ? 'text-success' : 'text-primary';
-
+      
       let contenidoHtml = '';
       if (m.tipo === 'image' && m.media_url) {
         contenidoHtml = `
-          <img src="${escapeHtml(m.media_url)}" class="media-thumb"
-               alt="Imagen" onclick="verImagen('${escapeHtml(m.media_url)}')">
-          ${m.contenido ? `<div class="mt-1">${escapeHtml(m.contenido)}</div>` : ''}`;
+          <img src="${escapeHtml(m.media_url)}" class="media-thumb" alt="Imagen" onclick="verImagen('${escapeHtml(m.media_url)}')">
+          ${m.contenido && m.contenido !== '(sin contenido)' ? `<div class="mt-1">${escapeHtml(m.contenido)}</div>` : ''}`;
       } else if (m.tipo === 'audio' && m.media_url) {
         contenidoHtml = `<audio controls src="${escapeHtml(m.media_url)}" class="mt-1" style="max-width:100%;height:36px"></audio>`;
       } else if (m.tipo === 'video' && m.media_url) {
         contenidoHtml = `<video controls src="${escapeHtml(m.media_url)}" class="media-thumb mt-1"></video>`;
       } else {
-        contenidoHtml = escapeHtml(m.contenido || '(sin contenido)');
+        const contenido = m.contenido || '(sin contenido)';
+        const esLlamada = contenido.includes('llamada') || contenido.includes('video') || contenido === '(sin contenido)';
+        contenidoHtml = esLlamada ? `<i class="fas fa-phone-alt me-1"></i>${escapeHtml(contenido)}` : escapeHtml(contenido);
       }
 
       html += `
@@ -404,8 +499,8 @@ function renderChat(mensajes) {
           </div>
           <div class="chat-meta">
             <span class="${colorDir} me-1">${iconDir}</span>
-            ${escapeHtml(m.remitente || '')} · ${hora}
-            ${m.tipo !== 'text' ? `<span class="badge ms-1 ${esEntrante ? 'badge-entrante' : 'badge-saliente'} rounded-pill">${m.tipo}</span>` : ''}
+            ${hora}
+            ${m.tipo !== 'text' ? `<span class="badge ms-2 ${esEntrante ? 'badge-entrante' : 'badge-saliente'} rounded-pill">${m.tipo}</span>` : ''}
           </div>
         </div>`;
     });
@@ -415,75 +510,83 @@ function renderChat(mensajes) {
   area.scrollTop = area.scrollHeight;
 }
 
-// ── Stats tarjetas ───────────────────────────────────────────────────────────
+// ============================================================================
+// ESTADÍSTICAS Y OTROS
+// ============================================================================
 async function actualizarStats() {
   try {
-    const res  = await fetch('/api/whatsapp/stats');
+    const res = await fetch('/api/whatsapp/stats');
     const data = await res.json();
     Object.entries(data).forEach(([key, s]) => {
       const el = id => document.getElementById(id);
-      if (el(`stat-total-${key}`)) el(`stat-total-${key}`).textContent = s.total.toLocaleString();
-      if (el(`stat-hoy-${key}`))  el(`stat-hoy-${key}`).textContent  = `${s.hoy} hoy`;
+      if (el(`stat-total-${key}`)) el(`stat-total-${key}`).textContent = (s.total || 0).toLocaleString();
+      if (el(`stat-hoy-${key}`)) el(`stat-hoy-${key}`).textContent = `${s.hoy || 0} hoy`;
       if (el(`stat-ultimo-${key}`) && s.ultimo_mensaje) {
-        el(`stat-ultimo-${key}`).innerHTML =
-          `<i class="fas fa-clock me-1"></i>Último: ${new Date(s.ultimo_mensaje).toLocaleString('es-CO')}`;
+        el(`stat-ultimo-${key}`).innerHTML = `<i class="fas fa-clock me-1"></i>Último: ${new Date(s.ultimo_mensaje).toLocaleString('es-CO', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'})}`;
       }
     });
   } catch(e) { console.warn('Stats error', e); }
 }
 
-// ── Paginación ───────────────────────────────────────────────────────────────
-function actualizarPaginacion(data) {
-  document.getElementById('info-paginacion').textContent =
-    `Página ${data.pagina} de ${data.paginas} (${data.total} total)`;
-  document.getElementById('btn-prev').disabled = data.pagina <= 1;
-  document.getElementById('btn-next').disabled = data.pagina >= data.paginas;
-}
-function cambiarPagina(dir) {
-  const nueva = paginaActual + dir;
-  if (nueva >= 1 && nueva <= totalPaginas) cargarHistorial(nueva);
-}
-
-// ── Exportar ─────────────────────────────────────────────────────────────────
 function exportarHistorial() {
   if (!asesoraActiva) return;
   window.location.href = `/api/whatsapp/exportar/${asesoraActiva}`;
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ============================================================================
+// HELPERS
+// ============================================================================
 function verImagen(url) {
   document.getElementById('modal-img-src').src = url;
   new bootstrap.Modal(document.getElementById('modalImagen')).show();
 }
+
 function mostrarLoading(show) {
-  document.getElementById('chat-loading').classList.toggle('d-none', !show);
-  if (show) document.getElementById('chat-area').classList.add('d-none');
+  const loading = document.getElementById('chat-loading');
+  const area = document.getElementById('chat-area');
+  if (show) {
+    loading.classList.remove('d-none');
+    area.classList.add('d-none');
+  } else {
+    loading.classList.add('d-none');
+    area.classList.remove('d-none');
+  }
 }
+
 function mostrarError(msg) {
   const area = document.getElementById('chat-area');
   area.classList.remove('d-none');
-  area.innerHTML = `<div class="alert alert-danger m-3">${msg}</div>`;
-}
-function formatFecha(iso) {
-  if (!iso || iso === 'Sin fecha') return iso;
-  const d = new Date(iso + 'T00:00:00');
-  return d.toLocaleDateString('es-CO', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
-}
-function escapeHtml(str) {
-  if (!str) return '';
-  return String(str)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-function debounceBuscar() {
-  clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(() => cargarHistorial(1), 400);
+  area.innerHTML = `<div class="alert alert-danger m-3">${escapeHtml(msg)}</div>`;
+  document.getElementById('chat-loading').classList.add('d-none');
 }
 
-// ── Init ─────────────────────────────────────────────────────────────────────
+function formatFecha(iso) {
+  if (!iso || iso === 'Sin fecha') return iso;
+  try {
+    const d = new Date(iso + 'T12:00:00');
+    const hoy = new Date();
+    const ayer = new Date(hoy);
+    ayer.setDate(ayer.getDate() - 1);
+    
+    if (d.toDateString() === hoy.toDateString()) return 'HOY';
+    if (d.toDateString() === ayer.toDateString()) return 'AYER';
+    return d.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' });
+  } catch(e) {
+    return iso;
+  }
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ============================================================================
+// INICIALIZACIÓN
+// ============================================================================
 document.addEventListener('DOMContentLoaded', () => {
   actualizarStats();
-  setInterval(actualizarStats, 30000); // refresh cada 30s
+  setInterval(actualizarStats, 30000);
 });
 </script>
 {% endblock %}
