@@ -190,22 +190,21 @@ def es_contacto_valido(contacto):
     return True
 
 def limpiar_numero_contacto(contacto):
-    """Limpia el número de contacto para mostrar (elimina sufijos como @c.us y valida)"""
+    """Limpia el número de contacto para mostrar (NO elimina @lid porque son contactos válidos)"""
     if not contacto:
         return None
     # Eliminar sufijo @c.us si existe
     if contacto.endswith('@c.us'):
         contacto = contacto[:-5]
-    # Eliminar otros sufijos
+    # Eliminar otros sufijos (pero NO @lid)
     contacto = contacto.replace('@s.whatsapp.net', '')
-    contacto = contacto.replace('@lid', '')
     contacto = contacto.replace('@g.us', '')
     # Si es status, retornar None
     if contacto == 'status@broadcast':
         return None
-    # Verificar que sea un número válido (al menos 8 dígitos)
-    solo_numeros = re.sub(r'[^0-9]', '', contacto)
-    if len(solo_numeros) < 8:
+    # NO eliminar @lid - son contactos válidos de WhatsApp
+    # Verificar que tenga al menos 3 caracteres (los @lid pueden ser cortos)
+    if len(contacto) < 3:
         return None
     return contacto
 # ============================================================================
@@ -1370,26 +1369,15 @@ def api_whatsapp_stats():
 
 @app.route('/api/whatsapp/historial/<asesora>', methods=['GET'])
 def api_whatsapp_historial(asesora):
-    """Historial de mensajes - Excluye mensajes de sistema"""
     page = request.args.get('page', 1, type=int)
     por_pag = request.args.get('por_pagina', 50, type=int)
-    buscar = request.args.get('q', '').strip()
-    tipo = request.args.get('tipo')
-    direccion = request.args.get('direccion')
-    desde = request.args.get('desde')
-    hasta = request.args.get('hasta')
 
     q = MensajeWhatsApp.query.filter(
         MensajeWhatsApp.asesora == asesora,
         MensajeWhatsApp.remitente != 'status@broadcast',
         ~MensajeWhatsApp.remitente.like('%@g.us')
+        # NO filtrar @lid
     )
-    if buscar:    q = q.filter(MensajeWhatsApp.contenido.ilike(f'%{buscar}%'))
-    if tipo:      q = q.filter_by(tipo=tipo)
-    if direccion: q = q.filter_by(direccion=direccion)
-    if desde:     q = q.filter(MensajeWhatsApp.timestamp >= datetime.fromisoformat(desde))
-    if hasta:     q = q.filter(MensajeWhatsApp.timestamp <= datetime.fromisoformat(hasta))
-
     pag = q.order_by(MensajeWhatsApp.timestamp.desc()).paginate(page=page, per_page=por_pag)
 
     return jsonify({
@@ -1399,16 +1387,15 @@ def api_whatsapp_historial(asesora):
         'mensajes': [m.to_dict() for m in pag.items],
     })
 
-
 @app.route('/api/whatsapp/conversaciones/<asesora>', methods=['GET'])
 def api_whatsapp_conversaciones(asesora):
-    """Obtener lista de conversaciones agrupadas por contacto real - VERSIÓN SIMPLIFICADA Y FUNCIONAL"""
+    """Obtener lista de conversaciones agrupadas por contacto real - INCLUYE @lid"""
     
     try:
         # Diccionario para almacenar resultados únicos
         conversaciones_dict = {}
         
-        # 1. Obtener contactos de mensajes ENTRANTES
+        # 1. Obtener contactos de mensajes ENTRANTES (NO filtrar @lid)
         entrantes = db.session.query(
             MensajeWhatsApp.remitente.label('contacto'),
             func.count(MensajeWhatsApp.id).label('total'),
@@ -1419,13 +1406,13 @@ def api_whatsapp_conversaciones(asesora):
             MensajeWhatsApp.remitente.isnot(None),
             MensajeWhatsApp.remitente != '',
             MensajeWhatsApp.remitente != 'status@broadcast',
-            ~MensajeWhatsApp.remitente.like('%@g.us'),
-            ~MensajeWhatsApp.remitente.like('%@lid')
+            ~MensajeWhatsApp.remitente.like('%@g.us')
+            # ELIMINADO: ~MensajeWhatsApp.remitente.like('%@lid')
         ).group_by(MensajeWhatsApp.remitente).all()
         
         for c in entrantes:
             contacto_limpio = limpiar_numero_contacto(c.contacto)
-            if contacto_limpio and len(contacto_limpio) >= 8:
+            if contacto_limpio:
                 conversaciones_dict[contacto_limpio] = {
                     'contacto': contacto_limpio,
                     'recibidos': c.total,
@@ -1433,7 +1420,7 @@ def api_whatsapp_conversaciones(asesora):
                     'ultimo_mensaje': c.ultimo.isoformat() if c.ultimo else None
                 }
         
-        # 2. Obtener contactos de mensajes SALIENTES
+        # 2. Obtener contactos de mensajes SALIENTES (NO filtrar @lid)
         salientes = db.session.query(
             MensajeWhatsApp.destinatario.label('contacto'),
             func.count(MensajeWhatsApp.id).label('total'),
@@ -1444,16 +1431,15 @@ def api_whatsapp_conversaciones(asesora):
             MensajeWhatsApp.destinatario.isnot(None),
             MensajeWhatsApp.destinatario != '',
             MensajeWhatsApp.destinatario != 'status@broadcast',
-            ~MensajeWhatsApp.destinatario.like('%@g.us'),
-            ~MensajeWhatsApp.destinatario.like('%@lid')
+            ~MensajeWhatsApp.destinatario.like('%@g.us')
+            # ELIMINADO: ~MensajeWhatsApp.destinatario.like('%@lid')
         ).group_by(MensajeWhatsApp.destinatario).all()
         
         for c in salientes:
             contacto_limpio = limpiar_numero_contacto(c.contacto)
-            if contacto_limpio and len(contacto_limpio) >= 8:
+            if contacto_limpio:
                 if contacto_limpio in conversaciones_dict:
                     conversaciones_dict[contacto_limpio]['enviados'] = c.total
-                    # Actualizar último mensaje si es más reciente
                     if c.ultimo and (not conversaciones_dict[contacto_limpio]['ultimo_mensaje'] or 
                        c.ultimo.isoformat() > conversaciones_dict[contacto_limpio]['ultimo_mensaje']):
                         conversaciones_dict[contacto_limpio]['ultimo_mensaje'] = c.ultimo.isoformat()
@@ -1465,14 +1451,13 @@ def api_whatsapp_conversaciones(asesora):
                         'ultimo_mensaje': c.ultimo.isoformat() if c.ultimo else None
                     }
         
-        # 3. Convertir a lista y ordenar por último mensaje
+        # 3. Convertir a lista y ordenar
         resultado = []
         for contacto, data in conversaciones_dict.items():
-            # Obtener el último mensaje real para mostrar preview
             ultimo_msg = MensajeWhatsApp.query.filter(
                 MensajeWhatsApp.asesora == asesora,
-                (MensajeWhatsApp.remitente.like(f'%{contacto}%')) | 
-                (MensajeWhatsApp.destinatario.like(f'%{contacto}%'))
+                (MensajeWhatsApp.remitente == contacto) | 
+                (MensajeWhatsApp.destinatario == contacto)
             ).order_by(MensajeWhatsApp.timestamp.desc()).first()
             
             resultado.append({
@@ -1485,16 +1470,13 @@ def api_whatsapp_conversaciones(asesora):
                 'ultimo_direccion': ultimo_msg.direccion if ultimo_msg else ''
             })
         
-        # Ordenar por fecha descendente (más reciente primero)
         resultado.sort(key=lambda x: x['ultimo_mensaje'] or '', reverse=True)
         
         return jsonify(resultado)
         
     except Exception as e:
         app.logger.error(f"Error en conversaciones: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({'error': str(e), 'detalle': traceback.format_exc()}), 500
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/whatsapp/conversacion/<asesora>/<contacto>', methods=['GET'])
 def api_whatsapp_conversacion(asesora, contacto):
