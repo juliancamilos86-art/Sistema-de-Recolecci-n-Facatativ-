@@ -489,19 +489,74 @@
                             </select>
                         </div>
                         <div class="col-md-4 mb-3">
-                            <label class="form-label fw-bold text-success">
-                                <i class="fas fa-book me-2"></i>Programa de interés
-                            </label>
-                            <select class="form-select" name="programa_interes" id="programa_interes">
-                                <option value="">Seleccione</option>
-                                <option value="Ingeniería Agronómica">Ingeniería Agronómica</option>
-                                <option value="Medicina Veterinaria">Medicina Veterinaria</option>
-                                <option value="Zootecnia">Zootecnia</option>
-                                <option value="Administración de Empresas">Administración de Empresas</option>
-                                <option value="Contaduría Pública">Contaduría Pública</option>
-                                <option value="Ingeniería Ambiental">Ingeniería Ambiental</option>
-                            </select>
-                        </div>
+    <label class="form-label fw-bold text-success">
+        <i class="fas fa-book me-2"></i>Programa de interés
+    </label>
+    <select class="form-select" name="programa_interes" id="programa_interes" required>
+        <option value="">Seleccione un programa</option>
+        
+        <optgroup label="🏆 PROGRAMAS DE PREGRADO">
+            <option value="Administración de Empresas">Administración de Empresas</option>
+            <option value="Contaduría Pública">Contaduría Pública</option>
+            <option value="Derecho">Derecho</option>
+            <option value="Ingeniería Agroindustrial">Ingeniería Agroindustrial</option>
+            <option value="Ingeniería Ambiental">Ingeniería Ambiental</option>
+            <option value="Ingeniería Civil">Ingeniería Civil</option>
+            <option value="Ingeniería de Alimentos">Ingeniería de Alimentos</option>
+            <option value="Ingeniería Industrial">Ingeniería Industrial</option>
+            <option value="Ingeniería Mecatrónica">Ingeniería Mecatrónica</option>
+            <option value="Medicina Veterinaria">Medicina Veterinaria</option>
+            <option value="Zootecnia">Zootecnia</option>
+        </optgroup>
+        
+        <optgroup label="📚 TÉCNICOS LABORALES">
+            <option value="Auxiliar Técnico de Instrumentación y Automatización Industrial">Auxiliar Técnico de Instrumentación y Automatización Industrial</option>
+            <option value="Auxiliar de Soporte Técnico de Equipos TIC">Auxiliar de Soporte Técnico de Equipos TIC</option>
+            <option value="Asistente Administrativo">Asistente Administrativo</option>
+            <option value="Inglés">Inglés</option>
+        </optgroup>
+        
+        <optgroup label="🎓 ESPECIALIZACIONES">
+            <option value="Especialización en Bienestar Animal y Etología (VIRTUAL)">Especialización en Bienestar Animal y Etología (VIRTUAL)</option>
+            <option value="Especialización en Derecho Procesal Agrario (VIRTUAL)">Especialización en Derecho Procesal Agrario (VIRTUAL)</option>
+            <option value="Especialización en Educación en Contextos Rurales (VIRTUAL)">Especialización en Educación en Contextos Rurales (VIRTUAL)</option>
+            <option value="Especialización en Gestión de Agronegocios (VIRTUAL)">Especialización en Gestión de Agronegocios (VIRTUAL)</option>
+            <option value="Especialización en Legislación Rural y Ordenamiento Territorial (VIRTUAL / PRESENCIAL)">Especialización en Legislación Rural y Ordenamiento Territorial (VIRTUAL / PRESENCIAL)</option>
+            <option value="Especialización en Responsabilidad Ambiental y Sostenibilidad (VIRTUAL)">Especialización en Responsabilidad Ambiental y Sostenibilidad (VIRTUAL)</option>
+            <option value="Especialización en Salud Pública Veterinaria (VIRTUAL)">Especialización en Salud Pública Veterinaria (VIRTUAL)</option>
+            <option value="Especialización en Seguridad Industrial, Higiene y Gestión Ambiental (PRESENCIAL)">Especialización en Seguridad Industrial, Higiene y Gestión Ambiental (PRESENCIAL)</option>
+            <option value="Especialización en Sistemas de Gestión Integrada de Calidad, Medio Ambiente y Prevención de Riesgos Laborales (PRESENCIAL)">Especialización en Sistemas de Gestión Integrada de Calidad, Medio Ambiente y Prevención de Riesgos Laborales (PRESENCIAL)</option>
+            <option value="Maestría en Ingeniería">Maestría en Ingeniería</option>
+        </optgroup>
+        
+        <optgroup label="📜 DIPLOMADOS PRESENCIALES">
+            <option value="Diplomado Control e Interventoría de Obras">Diplomado Control e Interventoría de Obras</option>
+            <option value="Diplomado Biotecnología de la Reproducción Bovina y Equina">Diplomado Biotecnología de la Reproducción Bovina y Equina</option>
+        </optgroup>
+        
+        <optgroup label="💻 DIPLOMADOS VIRTUALES">
+            <option value="Diplomado Extensión Agropecuaria">Diplomado Extensión Agropecuaria</option>
+            <option value="Diplomado Inocuidad Alimentaria: Enfermedades Transmitidas por Alimentos">Diplomado Inocuidad Alimentaria: Enfermedades Transmitidas por Alimentos</option>
+            <option value="Diplomado Modelación de Proyectos Arquitectónicos, Estructurales e Hidrosanitarios con BIM">Diplomado Modelación de Proyectos Arquitectónicos, Estructurales e Hidrosanitarios con BIM</option>
+            <option value="Diplomado Conciliación Virtual a través de plataforma Teams">Diplomado Conciliación Virtual a través de plataforma Teams</option>
+            <option value="Diplomado de Profundización en Gestión Estratégica en la Producción Pecuaria">Diplomado de Profundización en Gestión Estratégica en la Producción Pecuaria</option>
+            <option value="Diplomado Contratación Estatal">Diplomado Contratación Estatal</option>
+            <option value="Diplomado Proyectos de Construcción de Infraestructura">Diplomado Proyectos de Construcción de Infraestructura</option>
+            <option value="Diplomado en Gestión del Bienestar Animal (Animal Welfare Management) ISO 34700 Certificación Internacional Welfcert">Diplomado en Gestión del Bienestar Animal (Animal Welfare Management) ISO 34700 Certificación Internacional Welfcert</option>
+        </optgroup>
+        
+        <optgroup label="🐄 CURSOS PRESENCIALES">
+            <option value="Curso Teórico-Práctico para la Introducción a la Avicultura Comercial en Aves de Postura y Engorde">Curso Teórico-Práctico para la Introducción a la Avicultura Comercial en Aves de Postura y Engorde</option>
+            <option value="Inseminación Artificial Bovina">Inseminación Artificial Bovina</option>
+        </optgroup>
+        
+        <optgroup label="🌐 CURSOS VIRTUALES">
+            <option value="Implementación de la Norma GLOBAL G.A.P. V6.0 SMART – GFS">Implementación de la Norma GLOBAL G.A.P. V6.0 SMART – GFS</option>
+            <option value="Gestión de Proyectos a Través de Herramientas Tecnológicas">Gestión de Proyectos a Través de Herramientas Tecnológicas</option>
+            <option value="Asociatividad y Desarrollo Social">Asociatividad y Desarrollo Social</option>
+        </optgroup>
+    </select>
+</div>
                         <div class="col-md-4 mb-3">
                             <label class="form-label fw-bold text-success">
                                 <i class="fas fa-clock me-2"></i>Jornada de interés
