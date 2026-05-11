@@ -673,19 +673,24 @@ def dashboard():
 @app.route('/recoleccion')
 @login_required
 def recoleccion():
-    municipios    = Municipio.query.filter_by(activo=True).all()
+    # Obtener municipios (filtrados por activos)
+    municipios = Municipio.query.filter_by(activo=True).order_by(Municipio.nombre).all()
+    
+    # Obtener instituciones (para el select)
     instituciones = Institucion.query.options(db.joinedload(Institucion.municipio)).filter_by(activo=True).all()
-    municipio_id  = request.args.get('municipio', type=int)
-    periodo       = request.args.get('periodo', '2026-1')
+    
+    municipio_id = request.args.get('municipio', type=int)
+    periodo = request.args.get('periodo', '2026-1')
 
     query = RecoleccionDato.query.filter_by(ano_periodo=periodo)
     if municipio_id:
         query = query.filter_by(municipio_id=municipio_id)
 
     registros = query.order_by(RecoleccionDato.fecha_registro.desc()).limit(100).all()
+    
     return render_template('recoleccion.html',
                            registros=registros,
-                           municipios=municipios,
+                           municipios=municipios,  # ¡Esta línea es la clave!
                            instituciones=instituciones,
                            periodo_actual=periodo,
                            now=datetime.now)
