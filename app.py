@@ -32,7 +32,6 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 # Base de datos
 from sqlalchemy import func
-from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 
 # Cloudinary
 import cloudinary
@@ -42,7 +41,6 @@ import cloudinary.api
 # Procesamiento de datos
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, PatternFill, Alignment
-from PIL import Image
 
 # PDF y Reportes
 from reportlab.lib import colors
@@ -199,6 +197,7 @@ def limpiar_numero_contacto(contacto):
     if len(contacto) < 3:
         return None
     return contacto
+
 # ============================================================================
 # CONFIGURACIÓN WHATSAPP
 # ============================================================================
@@ -1529,6 +1528,7 @@ def api_whatsapp_exportar(asesora):
                      as_attachment=True,
                      download_name=f'historial_wa_{nombre}_{datetime.now().strftime("%Y%m%d")}.xlsx')
 
+
 # ============================================================================
 # MANEJO DE ERRORES
 # ============================================================================
@@ -1537,10 +1537,12 @@ def api_whatsapp_exportar(asesora):
 def not_found_error(error):
     return render_template('error.html', error_code=404, error_message='Página no encontrada', now=datetime.now), 404
 
+
 @app.errorhandler(500)
 def internal_error(error):
     db.session.rollback()
     return render_template('error.html', error_code=500, error_message='Error interno del servidor', now=datetime.now), 500
+
 
 @app.errorhandler(429)
 def ratelimit_error(error):
