@@ -31,32 +31,24 @@ from werkzeug.utils import secure_filename
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 # Base de datos
-from sqlalchemy import create_engine, text, func, and_, or_, desc, case
+from sqlalchemy import func
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
-
-# Azure AD
-import msal
-import requests
 
 # Cloudinary
 import cloudinary
 import cloudinary.uploader
 import cloudinary.api
-from cloudinary.uploader import upload
-from cloudinary.utils import cloudinary_url
 
 # Procesamiento de datos
 from openpyxl import Workbook, load_workbook
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.styles import Font, PatternFill, Alignment
 from PIL import Image
 
 # PDF y Reportes
 from reportlab.lib import colors
-from reportlab.lib.pagesizes import letter, landscape, A4
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image as RLImage
+from reportlab.lib.pagesizes import A4
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.units import inch
-from reportlab.pdfgen import canvas
 
 # Utilidades
 from email_validator import validate_email, EmailNotValidError
@@ -558,7 +550,7 @@ def generar_excel_recoleccion(filtros=None):
             try:
                 if len(str(cell.value)) > max_length:
                     max_length = len(str(cell.value))
-            except:
+            except Exception:
                 pass
         ws.column_dimensions[column_letter].width = min(max_length + 2, 50)
 
@@ -690,7 +682,7 @@ def recoleccion():
 
     return render_template('recoleccion.html',
                            registros=registros,
-                           municipios=municipios,  # ¡Esta línea es la clave!
+                           municipios=municipios,
                            instituciones=instituciones,
                            periodo_actual=periodo,
                            now=datetime.now)
@@ -713,7 +705,7 @@ def api_crear_recoleccion():
                 return None
             try:
                 return int(val)
-            except:
+            except Exception:
                 return None
 
         nuevo_registro = RecoleccionDato(
@@ -773,7 +765,7 @@ def api_obtener_recoleccion(id):
                 else:
                     try:
                         data[field] = int(data[field])
-                    except:
+                    except Exception:
                         data[field] = None
 
         for key, value in data.items():
@@ -816,13 +808,13 @@ def api_crear_feria():
         if data.get('fecha_inicio'):
             try:
                 fecha_inicio = datetime.strptime(data['fecha_inicio'], '%Y-%m-%d').date()
-            except:
+            except Exception:
                 pass
 
         if data.get('fecha_fin'):
             try:
                 fecha_fin = datetime.strptime(data['fecha_fin'], '%Y-%m-%d').date()
-            except:
+            except Exception:
                 pass
 
         nueva_feria = Feria(
@@ -847,7 +839,8 @@ def api_crear_feria():
 @login_required
 def api_subir_imagen_feria(feria_id):
     try:
-        feria = Feria.query.get_or_404(feria_id)
+        # Verificar que la feria existe
+        Feria.query.get_or_404(feria_id)
 
         if 'images' not in request.files:
             return jsonify({'error': 'No se enviaron imágenes'}), 400
@@ -914,7 +907,8 @@ def api_subir_imagen_feria(feria_id):
 @login_required
 def api_obtener_imagenes_feria(feria_id):
     try:
-        feria    = Feria.query.get_or_404(feria_id)
+        # Verificar que la feria existe
+        Feria.query.get_or_404(feria_id)
         imagenes = FeriaImagen.query.filter_by(feria_id=feria_id).order_by(FeriaImagen.fecha_subida.desc()).all()
         return jsonify({'imagenes': [i.to_dict() for i in imagenes], 'total': len(imagenes)})
     except Exception:
@@ -929,14 +923,14 @@ def api_eliminar_imagen(public_id):
         if CLOUDINARY_CONFIGURED:
             try:
                 cloudinary.uploader.destroy(public_id)
-            except:
+            except Exception:
                 pass
         else:
             try:
                 filepath = os.path.join(app.config['UPLOAD_FOLDER'], public_id)
                 if os.path.exists(filepath):
                     os.remove(filepath)
-            except:
+            except Exception:
                 pass
         db.session.delete(imagen)
         db.session.commit()
@@ -1286,10 +1280,6 @@ def api_detalles_importacion(id):
 
 # ============================================================================
 # MÓDULO WHATSAPP - RUTAS
-# ============================================================================
-
-# ============================================================================
-# MÓDULO WHATSAPP - RUTAS (VERSIÓN CORREGIDA - NO FILTRA @lid)
 # ============================================================================
 
 # Página web de WhatsApp (requiere login)
