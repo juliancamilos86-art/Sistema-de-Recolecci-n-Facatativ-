@@ -6,7 +6,6 @@ VERSIÓN COMPLETA CON MÓDULO WHATSAPP INTEGRADO
 
 import os
 import json
-
 import csv
 import zipfile
 import secrets
@@ -14,7 +13,6 @@ import re
 from datetime import datetime, timedelta
 from functools import wraps
 from io import BytesIO
-from urllib.parse 
 
 # Flask y extensiones core
 from flask import (
@@ -31,7 +29,6 @@ from flask_limiter.util import get_remote_address
 from flask_caching import Cache
 from werkzeug.utils import secure_filename
 from werkzeug.middleware.proxy_fix import ProxyFix
-from werkzeug.security 
 
 # Base de datos
 from sqlalchemy import create_engine, text, func, and_, or_, desc, case
@@ -147,9 +144,9 @@ try:
         CLOUDINARY_CONFIGURED = True
     else:
         print("⚠️ Cloudinary no configurado. Las imágenes se guardarán localmente.")
-except Exception as e:
+except Exception:
     CLOUDINARY_CONFIGURED = False
-    print(f"❌ Error Cloudinary: {str(e)}")
+    print("❌ Error Cloudinary")
 
 # Inicializar extensiones
 db = SQLAlchemy(app)
@@ -663,8 +660,8 @@ def dashboard():
                                registros_recientes=registros_recientes,
                                usuario=current_user,
                                now=datetime.now)
-    except Exception as e:
-        app.logger.error(f"Error en dashboard: {str(e)}")
+    except Exception:
+        app.logger.error("Error en dashboard")
         flash('Error al cargar el dashboard', 'error')
         return render_template('dashboard.html', usuario=current_user, now=datetime.now)
 
@@ -678,10 +675,10 @@ def dashboard():
 def recoleccion():
     # Obtener municipios (filtrados por activos)
     municipios = Municipio.query.filter_by(activo=True).order_by(Municipio.nombre).all()
-    
+
     # Obtener instituciones (para el select)
     instituciones = Institucion.query.options(db.joinedload(Institucion.municipio)).filter_by(activo=True).all()
-    
+
     municipio_id = request.args.get('municipio', type=int)
     periodo = request.args.get('periodo', '2026-1')
 
@@ -690,7 +687,7 @@ def recoleccion():
         query = query.filter_by(municipio_id=municipio_id)
 
     registros = query.order_by(RecoleccionDato.fecha_registro.desc()).limit(100).all()
-    
+
     return render_template('recoleccion.html',
                            registros=registros,
                            municipios=municipios,  # ¡Esta línea es la clave!
@@ -712,9 +709,12 @@ def api_crear_recoleccion():
             data['correo'] = email_validado
 
         def parse_int(val):
-            if val in ('', None): return None
-            try: return int(val)
-            except: return None
+            if val in ('', None):
+                return None
+            try:
+                return int(val)
+            except:
+                return None
 
         nuevo_registro = RecoleccionDato(
             ficha_toma_registro  = data.get('ficha_toma_registro'),
@@ -743,10 +743,10 @@ def api_crear_recoleccion():
         db.session.commit()
         return jsonify({'message': 'Registro creado exitosamente', 'data': nuevo_registro.to_dict()}), 201
 
-    except Exception as e:
+    except Exception:
         db.session.rollback()
-        app.logger.error(f"Error al crear registro: {str(e)}")
-        return jsonify({'error': f'Error al crear el registro: {str(e)}'}), 500
+        app.logger.error("Error al crear registro")
+        return jsonify({'error': 'Error al crear el registro'}), 500
 
 
 @app.route('/api/recoleccion/<int:id>', methods=['PUT', 'GET'])
@@ -771,8 +771,10 @@ def api_obtener_recoleccion(id):
                 if data[field] in ('', None):
                     data[field] = None
                 else:
-                    try: data[field] = int(data[field])
-                    except: data[field] = None
+                    try:
+                        data[field] = int(data[field])
+                    except:
+                        data[field] = None
 
         for key, value in data.items():
             if hasattr(registro, key):
@@ -782,9 +784,9 @@ def api_obtener_recoleccion(id):
         db.session.commit()
         return jsonify({'message': 'Registro actualizado exitosamente', 'data': registro.to_dict()})
 
-    except Exception as e:
+    except Exception:
         db.session.rollback()
-        return jsonify({'error': f'Error al actualizar el registro: {str(e)}'}), 500
+        return jsonify({'error': 'Error al actualizar el registro'}), 500
 
 
 # ============================================================================
@@ -812,12 +814,16 @@ def api_crear_feria():
         fecha_fin    = None
 
         if data.get('fecha_inicio'):
-            try: fecha_inicio = datetime.strptime(data['fecha_inicio'], '%Y-%m-%d').date()
-            except: pass
+            try:
+                fecha_inicio = datetime.strptime(data['fecha_inicio'], '%Y-%m-%d').date()
+            except:
+                pass
 
         if data.get('fecha_fin'):
-            try: fecha_fin = datetime.strptime(data['fecha_fin'], '%Y-%m-%d').date()
-            except: pass
+            try:
+                fecha_fin = datetime.strptime(data['fecha_fin'], '%Y-%m-%d').date()
+            except:
+                pass
 
         nueva_feria = Feria(
             nombre=data.get('nombre'),
@@ -832,7 +838,7 @@ def api_crear_feria():
         db.session.commit()
         return jsonify({'message': 'Feria creada exitosamente', 'data': nueva_feria.to_dict()}), 201
 
-    except Exception as e:
+    except Exception:
         db.session.rollback()
         return jsonify({'error': 'Error al crear la feria'}), 500
 
@@ -883,8 +889,8 @@ def api_subir_imagen_feria(feria_id):
                     db.session.flush()
                     imagenes_subidas.append({'url': url, 'public_id': public_id, 'id': imagen.id})
 
-                except Exception as e:
-                    errores.append({'filename': file.filename, 'error': str(e)})
+                except Exception:
+                    errores.append({'filename': file.filename, 'error': 'Error al subir'})
                     db.session.rollback()
             else:
                 errores.append({'filename': file.filename, 'error': 'Tipo de archivo no permitido'})
@@ -899,9 +905,9 @@ def api_subir_imagen_feria(feria_id):
             'total_en_bd': verificacion, 'cloudinary_configurado': CLOUDINARY_CONFIGURED
         }), 200
 
-    except Exception as e:
+    except Exception:
         db.session.rollback()
-        return jsonify({'error': f'Error al subir las imágenes: {str(e)}'}), 500
+        return jsonify({'error': 'Error al subir las imágenes'}), 500
 
 
 @app.route('/api/ferias/<int:feria_id>/imagenes', methods=['GET'])
@@ -911,8 +917,8 @@ def api_obtener_imagenes_feria(feria_id):
         feria    = Feria.query.get_or_404(feria_id)
         imagenes = FeriaImagen.query.filter_by(feria_id=feria_id).order_by(FeriaImagen.fecha_subida.desc()).all()
         return jsonify({'imagenes': [i.to_dict() for i in imagenes], 'total': len(imagenes)})
-    except Exception as e:
-        return jsonify({'error': 'Error al obtener imágenes', 'detalle': str(e)}), 500
+    except Exception:
+        return jsonify({'error': 'Error al obtener imágenes'}), 500
 
 
 @app.route('/api/ferias/imagenes/<path:public_id>', methods=['DELETE'])
@@ -921,17 +927,21 @@ def api_eliminar_imagen(public_id):
     try:
         imagen = FeriaImagen.query.filter_by(public_id=public_id).first_or_404()
         if CLOUDINARY_CONFIGURED:
-            try: cloudinary.uploader.destroy(public_id)
-            except: pass
+            try:
+                cloudinary.uploader.destroy(public_id)
+            except:
+                pass
         else:
             try:
                 filepath = os.path.join(app.config['UPLOAD_FOLDER'], public_id)
-                if os.path.exists(filepath): os.remove(filepath)
-            except: pass
+                if os.path.exists(filepath):
+                    os.remove(filepath)
+            except:
+                pass
         db.session.delete(imagen)
         db.session.commit()
         return jsonify({'message': 'Imagen eliminada exitosamente'})
-    except Exception as e:
+    except Exception:
         db.session.rollback()
         return jsonify({'error': 'Error al eliminar la imagen'}), 500
 
@@ -973,8 +983,8 @@ def api_importar_excel():
             for row in ws.iter_rows(min_row=2, values_only=True):
                 if any(cell is not None for cell in row):
                     data.append(dict(zip(headers, row)))
-        except Exception as e:
-            return jsonify({'error': f'Error al leer el archivo Excel: {str(e)}'}), 400
+        except Exception:
+            return jsonify({'error': 'Error al leer el archivo Excel'}), 400
 
         if not data:
             return jsonify({'error': 'El archivo está vacío'}), 400
@@ -1032,9 +1042,9 @@ def api_importar_excel():
                 if registros_procesados % 50 == 0:
                     db.session.commit()
 
-            except Exception as e:
+            except Exception:
                 db.session.rollback()
-                errores.append({'fila': idx, 'error': str(e)[:200]})
+                errores.append({'fila': idx, 'error': 'Error en fila'})
 
         db.session.commit()
 
@@ -1048,8 +1058,8 @@ def api_importar_excel():
             )
             db.session.add(archivo_importado)
             db.session.commit()
-        except Exception as e:
-            app.logger.error(f"Error al guardar metadata: {str(e)}")
+        except Exception:
+            app.logger.error("Error al guardar metadata")
 
         return jsonify({
             'message': f'Importación completada: {registros_procesados} registros procesados',
@@ -1058,7 +1068,7 @@ def api_importar_excel():
             'detalles_errores': errores[:10]
         })
 
-    except Exception as e:
+    except Exception:
         db.session.rollback()
         return jsonify({'error': 'Error interno en el servidor'}), 500
 
@@ -1085,8 +1095,10 @@ def api_reporte_general():
         fecha_fin    = request.args.get('fecha_fin')
 
         query = RecoleccionDato.query.filter_by(ano_periodo=periodo)
-        if municipio_id: query = query.filter_by(municipio_id=municipio_id)
-        if estado:       query = query.filter_by(estado=estado)
+        if municipio_id:
+            query = query.filter_by(municipio_id=municipio_id)
+        if estado:
+            query = query.filter_by(estado=estado)
         if fecha_inicio and fecha_fin:
             query = query.filter(RecoleccionDato.fecha_registro.between(fecha_inicio, fecha_fin))
 
@@ -1098,13 +1110,16 @@ def api_reporte_general():
             'por_grado': {}, 'por_programa': {}, 'por_municipio': {}
         }
         for r in registros:
-            if r.grado:           stats['por_grado'][r.grado] = stats['por_grado'].get(r.grado, 0) + 1
-            if r.programa_interes: stats['por_programa'][r.programa_interes] = stats['por_programa'].get(r.programa_interes, 0) + 1
-            if r.municipio:        stats['por_municipio'][r.municipio.nombre] = stats['por_municipio'].get(r.municipio.nombre, 0) + 1
+            if r.grado:
+                stats['por_grado'][r.grado] = stats['por_grado'].get(r.grado, 0) + 1
+            if r.programa_interes:
+                stats['por_programa'][r.programa_interes] = stats['por_programa'].get(r.programa_interes, 0) + 1
+            if r.municipio:
+                stats['por_municipio'][r.municipio.nombre] = stats['por_municipio'].get(r.municipio.nombre, 0) + 1
 
         return jsonify({'periodo': periodo, 'estadisticas': stats, 'registros': [r.to_dict() for r in registros[:100]]})
 
-    except Exception as e:
+    except Exception:
         return jsonify({'error': 'Error al generar reporte'}), 500
 
 
@@ -1124,7 +1139,7 @@ def api_exportar_excel():
                          mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                          as_attachment=True,
                          download_name=f'reporte_uniagraria_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx')
-    except Exception as e:
+    except Exception:
         flash('Error al generar el archivo Excel', 'error')
         return redirect(url_for('reportes'))
 
@@ -1177,7 +1192,7 @@ def api_exportar_pdf():
 
         return send_file(buffer, mimetype='application/pdf', as_attachment=True,
                          download_name=f'reporte_uniagraria_{datetime.now().strftime("%Y%m%d_%H%M%S")}.pdf')
-    except Exception as e:
+    except Exception:
         flash('Error al generar el PDF', 'error')
         return redirect(url_for('reportes'))
 
@@ -1214,7 +1229,7 @@ def api_comprimir_todo():
         zip_buffer.seek(0)
         return send_file(zip_buffer, mimetype='application/zip', as_attachment=True,
                          download_name=f'uniagraria_backup_{datetime.now().strftime("%Y%m%d_%H%M%S")}.zip')
-    except Exception as e:
+    except Exception:
         flash('Error al generar el archivo ZIP', 'error')
         return redirect(url_for('archivos'))
 
@@ -1244,7 +1259,7 @@ def api_cambiar_rol(user_id):
             db.session.commit()
             return jsonify({'message': 'Rol actualizado exitosamente'})
         return jsonify({'error': 'Rol inválido'}), 400
-    except Exception as e:
+    except Exception:
         db.session.rollback()
         return jsonify({'error': 'Error al cambiar rol'}), 500
 
@@ -1265,7 +1280,7 @@ def api_detalles_importacion(id):
             'url':                  importacion.url,
             'datos_metadata':       importacion.datos_metadata
         })
-    except Exception as e:
+    except Exception:
         return jsonify({'error': 'Error al obtener detalles'}), 500
 
 
@@ -1289,7 +1304,7 @@ def whatsapp():
 @app.route('/api/whatsapp/mensaje', methods=['POST', 'OPTIONS'])
 def api_whatsapp_recibir():
     """Recibe mensajes del servicio Node.js - SIN filtrar @lid"""
-    
+
     if request.method == 'OPTIONS':
         response = make_response()
         response.headers.add('Access-Control-Allow-Origin', '*')
@@ -1303,14 +1318,14 @@ def api_whatsapp_recibir():
 
     remitente = data.get('remitente', '')
     destinatario = data.get('destinatario', '')
-    
+
     # SOLO filtrar mensajes de sistema y grupos (NO filtrar @lid)
     if remitente == 'status@broadcast' or destinatario == 'status@broadcast':
         return jsonify({'status': 'ignorado', 'reason': 'mensaje de sistema'}), 200
-    
+
     if '@g.us' in remitente or '@g.us' in destinatario:
         return jsonify({'status': 'ignorado', 'reason': 'mensaje de grupo'}), 200
-    
+
     # IMPORTANTE: NO filtramos @lid - son contactos válidos de WhatsApp
 
     # Evitar duplicados
@@ -1333,10 +1348,10 @@ def api_whatsapp_recibir():
         db.session.commit()
         print(f"✅ Mensaje guardado: ID={msg.id} | Asesora={msg.asesora} | Remitente={msg.remitente}")
         return jsonify({'status': 'ok', 'id': msg.id}), 201
-    except Exception as e:
+    except Exception:
         db.session.rollback()
-        app.logger.error(f'Error guardando WA mensaje: {e}')
-        return jsonify({'error': str(e)}), 500
+        app.logger.error('Error guardando WA mensaje')
+        return jsonify({'error': 'Error interno'}), 500
 
 
 @app.route('/api/whatsapp/stats', methods=['GET'])
@@ -1381,9 +1396,9 @@ def api_whatsapp_conversaciones(asesora):
     """Lista de conversaciones agrupadas por contacto - Endpoint PÚBLICO"""
     try:
         from sqlalchemy import func
-        
+
         conversaciones = {}
-        
+
         # Mensajes ENTRANTES
         entrantes = db.session.query(
             MensajeWhatsApp.remitente,
@@ -1397,7 +1412,7 @@ def api_whatsapp_conversaciones(asesora):
             MensajeWhatsApp.remitente != 'status@broadcast',
             ~MensajeWhatsApp.remitente.like('%@g.us')
         ).group_by(MensajeWhatsApp.remitente).all()
-        
+
         for r in entrantes:
             if r.remitente:
                 conversaciones[r.remitente] = {
@@ -1405,7 +1420,7 @@ def api_whatsapp_conversaciones(asesora):
                     'enviados': 0,
                     'ultimo': r.ultimo
                 }
-        
+
         # Mensajes SALIENTES
         salientes = db.session.query(
             MensajeWhatsApp.destinatario,
@@ -1419,7 +1434,7 @@ def api_whatsapp_conversaciones(asesora):
             MensajeWhatsApp.destinatario != 'status@broadcast',
             ~MensajeWhatsApp.destinatario.like('%@g.us')
         ).group_by(MensajeWhatsApp.destinatario).all()
-        
+
         for r in salientes:
             if r.destinatario:
                 if r.destinatario in conversaciones:
@@ -1432,14 +1447,14 @@ def api_whatsapp_conversaciones(asesora):
                         'enviados': r.total,
                         'ultimo': r.ultimo
                     }
-        
+
         resultado = []
         for contacto, data in conversaciones.items():
             ultimo_msg = MensajeWhatsApp.query.filter(
                 MensajeWhatsApp.asesora == asesora,
                 (MensajeWhatsApp.remitente == contacto) | (MensajeWhatsApp.destinatario == contacto)
             ).order_by(MensajeWhatsApp.timestamp.desc()).first()
-            
+
             resultado.append({
                 'contacto': contacto,
                 'total_mensajes': data['recibidos'] + data['enviados'],
@@ -1449,13 +1464,13 @@ def api_whatsapp_conversaciones(asesora):
                 'ultimo_contenido': ultimo_msg.contenido[:80] if ultimo_msg else '',
                 'ultimo_direccion': ultimo_msg.direccion if ultimo_msg else ''
             })
-        
+
         resultado.sort(key=lambda x: x['ultimo_mensaje'] or '', reverse=True)
         return jsonify(resultado)
-        
-    except Exception as e:
-        app.logger.error(f"Error en conversaciones: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+
+    except Exception:
+        app.logger.error("Error en conversaciones")
+        return jsonify({'error': 'Error interno'}), 500
 
 
 @app.route('/api/whatsapp/conversacion/<asesora>/<contacto>', methods=['GET'])
@@ -1464,14 +1479,14 @@ def api_whatsapp_conversacion(asesora, contacto):
     try:
         page = request.args.get('page', 1, type=int)
         por_pag = request.args.get('por_pagina', 50, type=int)
-        
+
         q = MensajeWhatsApp.query.filter(
             MensajeWhatsApp.asesora == asesora,
             (MensajeWhatsApp.remitente == contacto) | (MensajeWhatsApp.destinatario == contacto)
         ).order_by(MensajeWhatsApp.timestamp.asc())
-        
+
         pag = q.paginate(page=page, per_page=por_pag, error_out=False)
-        
+
         return jsonify({
             'contacto': contacto,
             'total': pag.total,
@@ -1479,10 +1494,10 @@ def api_whatsapp_conversacion(asesora, contacto):
             'paginas': pag.pages,
             'mensajes': [m.to_dict() for m in pag.items]
         })
-        
-    except Exception as e:
-        app.logger.error(f"Error en conversacion: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+
+    except Exception:
+        app.logger.error("Error en conversacion")
+        return jsonify({'error': 'Error interno'}), 500
 
 
 @app.route('/api/whatsapp/exportar/<asesora>')
@@ -1573,9 +1588,9 @@ def init_database():
             crear_plantillas_ejemplo()
             return True
 
-        except Exception as e:
+        except Exception:
             db.session.rollback()
-            print(f"❌ Error al inicializar base de datos: {str(e)}")
+            print("❌ Error al inicializar base de datos")
             return False
 
 
@@ -1604,8 +1619,8 @@ def crear_plantillas_ejemplo():
             writer.writerow(ejemplo)
 
         print("✅ Plantillas de ejemplo creadas")
-    except Exception as e:
-        print(f"⚠️ Error al crear plantillas: {str(e)}")
+    except Exception:
+        print("⚠️ Error al crear plantillas")
 
 
 with app.app_context():
