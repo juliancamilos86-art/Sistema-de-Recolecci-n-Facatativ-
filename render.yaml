@@ -14,18 +14,18 @@ services:
       - key: DATABASE_URL
         sync: false
       - key: CLOUDINARY_CLOUD_NAME
-        sync: false
+        value: dcahg6ff3
       - key: CLOUDINARY_API_KEY
-        sync: false
+        value: 839728325267682
       - key: CLOUDINARY_API_SECRET
         sync: false
       - key: AZURE_CLIENT_ID
-        sync: false
+        value: 6c90a6e0-afdb-401b-bf89-ffccccf80d31
       - key: AZURE_CLIENT_SECRET
         sync: false
       - key: AZURE_TENANT_ID
-        sync: false
+        value: 338f1914-5f2b-4c1e-94e1-b29347c7b31f
       - key: AZURE_REDIRECT_URI
-        sync: false
+        value: https://sistema-de-recolecci-n-facatativ-pnyf.onrender.com/auth/microsoft/callback
       - key: SECRET_KEY
         generateValue: true
