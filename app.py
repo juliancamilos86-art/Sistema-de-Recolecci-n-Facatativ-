@@ -66,7 +66,7 @@ AZURE_CLIENT_ID = os.environ.get('AZURE_CLIENT_ID', '')
 AZURE_CLIENT_SECRET = os.environ.get('AZURE_CLIENT_SECRET', '')
 AZURE_TENANT_ID = os.environ.get('AZURE_TENANT_ID', 'common')
 AZURE_AUTHORITY = f"https://login.microsoftonline.com/{AZURE_TENANT_ID}"
-AZURE_SCOPE = ["User.Read", "email", "openid", "profile"]
+AZURE_SCOPE = ["User.Read", "email", "openid", "profile"]  # ← IMPORTANTE: LISTA, no SET
 
 # Inicializar MSAL solo si hay configuración
 msal_app = None
