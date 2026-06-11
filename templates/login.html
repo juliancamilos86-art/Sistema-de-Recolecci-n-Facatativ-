@@ -198,6 +198,11 @@
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
         }
 
+        .btn-microsoft.disabled {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
         .btn-microsoft svg {
             flex-shrink: 0;
         }
@@ -262,6 +267,12 @@
             background-color: #fff3cd;
             color: #856404;
             border-left: 4px solid #ffc107;
+        }
+
+        .alert-info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border-left: 4px solid #17a2b8;
         }
 
         .security-badge {
@@ -355,7 +366,7 @@
 
     <div class="login-card">
         <div class="login-header">
-            <img src="{{ url_for('static', filename='uploads/LogoU.png') }}" alt="Logo UNIAGRARIA" class="logo">
+            <img src="{{ url_for('static', filename='uploads/LogoU.png') }}" alt="Logo UNIAGRARIA" class="logo" onerror="this.src='https://via.placeholder.com/120x120?text=UNIAGRARIA'">
             <i class="bi bi-shield-lock"></i>
             <h3 class="mb-0">Sistema de Recolección Facatativá</h3>
             <p class="mb-0">UNIAGRARIA</p>
@@ -374,7 +385,8 @@
                 {% endif %}
             {% endwith %}
             
-            <!-- BOTÓN MICROSOFT -->
+            <!-- BOTÓN MICROSOFT - SOLO SI HAY URL VÁLIDA -->
+            {% if auth_url and auth_url != '#' and auth_url != 'None' and auth_url != '' %}
             <a href="{{ auth_url }}" class="btn-microsoft" id="microsoftBtn">
                 <svg width="21" height="21" viewBox="0 0 21 21">
                     <rect x="0" y="0" width="10" height="10" fill="#f25022"/>
@@ -394,8 +406,15 @@
             <div class="login-divider">
                 <span>O CONTINÚA CON</span>
             </div>
+            {% else %}
+            <!-- Si no hay Microsoft configurado, mostrar mensaje informativo -->
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle-fill"></i>
+                Inicia sesión con tu correo institucional @uniagraria.edu.co
+            </div>
+            {% endif %}
 
-            <!-- FORMULARIO DE RESPALDO - SIN CSRF -->
+            <!-- FORMULARIO DE RESPALDO -->
             <form method="POST" action="{{ url_for('login') }}" id="loginForm">
                 <div class="mb-3">
                     <label for="email" class="form-label">
@@ -409,6 +428,9 @@
                            required
                            pattern="[a-zA-Z0-9._%+-]+@uniagraria\.edu\.co$"
                            title="Debe ser un correo @uniagraria.edu.co">
+                    <div class="invalid-feedback">
+                        Por favor ingresa un correo institucional válido (@uniagraria.edu.co)
+                    </div>
                 </div>
 
                 <div class="mb-4">
@@ -424,6 +446,9 @@
                                required
                                minlength="8">
                         <i class="bi bi-eye-slash password-toggle" id="togglePassword" onclick="togglePassword()"></i>
+                    </div>
+                    <div class="invalid-feedback">
+                        La contraseña debe tener al menos 8 caracteres
                     </div>
                 </div>
 
@@ -473,51 +498,80 @@
         }
 
         // Validación básica del formulario
-        document.getElementById('loginForm').addEventListener('submit', function(e) {
-            const email = document.getElementById('email');
-            const password = document.getElementById('password');
-            const emailPattern = /^[a-zA-Z0-9._%+-]+@uniagraria\.edu\.co$/;
-            
-            if (!emailPattern.test(email.value)) {
-                e.preventDefault();
-                email.classList.add('is-invalid');
-                alert('Por favor ingresa un correo institucional válido (@uniagraria.edu.co)');
-                return false;
-            }
-            
-            if (password.value.length < 8) {
-                e.preventDefault();
-                password.classList.add('is-invalid');
-                alert('La contraseña debe tener al menos 8 caracteres');
-                return false;
-            }
-            
-            // Mostrar loading
-            const btn = document.getElementById('submitBtn');
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span> Iniciando sesión...';
-            btn.disabled = true;
-        });
+        const form = document.getElementById('loginForm');
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                const email = document.getElementById('email');
+                const password = document.getElementById('password');
+                const emailPattern = /^[a-zA-Z0-9._%+-]+@uniagraria\.edu\.co$/;
+                let isValid = true;
+                
+                // Validar email
+                if (!emailPattern.test(email.value)) {
+                    e.preventDefault();
+                    email.classList.add('is-invalid');
+                    isValid = false;
+                } else {
+                    email.classList.remove('is-invalid');
+                }
+                
+                // Validar password
+                if (password.value.length < 8) {
+                    e.preventDefault();
+                    password.classList.add('is-invalid');
+                    isValid = false;
+                } else {
+                    password.classList.remove('is-invalid');
+                }
+                
+                if (isValid) {
+                    // Mostrar loading
+                    const btn = document.getElementById('submitBtn');
+                    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span> Iniciando sesión...';
+                    btn.disabled = true;
+                }
+            });
+        }
 
         // Quitar clase invalid al escribir
-        document.getElementById('email').addEventListener('input', function() {
-            this.classList.remove('is-invalid');
-        });
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
         
-        document.getElementById('password').addEventListener('input', function() {
-            this.classList.remove('is-invalid');
-        });
+        if (emailInput) {
+            emailInput.addEventListener('input', function() {
+                this.classList.remove('is-invalid');
+            });
+        }
+        
+        if (passwordInput) {
+            passwordInput.addEventListener('input', function() {
+                this.classList.remove('is-invalid');
+            });
+        }
 
         // Prevenir doble clic en botón Microsoft
-        document.getElementById('microsoftBtn').addEventListener('click', function(e) {
-            this.style.pointerEvents = 'none';
-            this.style.opacity = '0.7';
-            setTimeout(() => {
-                this.style.pointerEvents = 'auto';
-                this.style.opacity = '1';
-            }, 3000);
-        });
+        const microsoftBtn = document.getElementById('microsoftBtn');
+        if (microsoftBtn) {
+            microsoftBtn.addEventListener('click', function(e) {
+                const btn = this;
+                btn.style.pointerEvents = 'none';
+                btn.style.opacity = '0.7';
+                btn.classList.add('disabled');
+                
+                // Cambiar texto temporalmente
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span> Redirigiendo a Microsoft...';
+                
+                setTimeout(() => {
+                    btn.style.pointerEvents = 'auto';
+                    btn.style.opacity = '1';
+                    btn.classList.remove('disabled');
+                    btn.innerHTML = originalText;
+                }, 5000);
+            });
+        }
 
-        console.log('Login mejorado - Versión compatible');
+        console.log('Login mejorado - Versión con Microsoft Azure AD');
     </script>
 </body>
 </html>
