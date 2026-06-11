@@ -1,7 +1,7 @@
 """
 UNIAGRARIA - SISTEMA DE RECOLECCIÓN FACATATIVÁ 2026
 Julian Camilo Quintero Martinez
-VERSIÓN COMPLETA CON MÓDULO WHATSAPP INTEGRADO
+VERSIÓN COMPLETA CON MÓDULO WHATSAPP INTEGRADO Y AUTENTICACIÓN MICROSOFT
 """
 
 import os
@@ -51,9 +51,37 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 # Utilidades
 from email_validator import validate_email, EmailNotValidError
 
+# MSAL para Azure AD
+from msal import ConfidentialClientApplication
+
 # Configuración de variables de entorno
 from dotenv import load_dotenv
 load_dotenv()
+
+# ============================================================================
+# CONFIGURACIÓN MICROSOFT AZURE AD
+# ============================================================================
+
+AZURE_CLIENT_ID = os.environ.get('AZURE_CLIENT_ID', '')
+AZURE_CLIENT_SECRET = os.environ.get('AZURE_CLIENT_SECRET', '')
+AZURE_TENANT_ID = os.environ.get('AZURE_TENANT_ID', 'common')
+AZURE_AUTHORITY = f"https://login.microsoftonline.com/{AZURE_TENANT_ID}"
+AZURE_SCOPE = ["User.Read", "email", "openid", "profile"]
+
+# Inicializar MSAL solo si hay configuración
+msal_app = None
+if AZURE_CLIENT_ID and AZURE_CLIENT_SECRET:
+    try:
+        msal_app = ConfidentialClientApplication(
+            client_id=AZURE_CLIENT_ID,
+            client_credential=AZURE_CLIENT_SECRET,
+            authority=AZURE_AUTHORITY
+        )
+        print("✅ Microsoft Azure AD configurado")
+    except Exception as e:
+        print(f"⚠️ Error configurando Microsoft Azure AD: {e}")
+else:
+    print("⚠️ Microsoft Azure AD no configurado - solo login por email")
 
 # ============================================================================
 # CONFIGURACIÓN INICIAL DE LA APLICACIÓN
@@ -582,6 +610,7 @@ def login():
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
 
+    # Si es POST, proceso el login por email (sistema tradicional)
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
         if not email:
@@ -592,10 +621,11 @@ def login():
         if usuario and usuario.activo:
             login_user(usuario, remember=True)
             session.permanent = True
-            session['user_id']    = usuario.id
+            session['user_id'] = usuario.id
             session['user_email'] = usuario.email
-            session['user_name']  = usuario.nombre
-            session['user_rol']   = usuario.rol
+            session['user_name'] = usuario.nombre
+            session['user_rol'] = usuario.rol
+            session['auth_provider'] = 'email'
             session.modified = True
             usuario.ultimo_acceso = datetime.utcnow()
             db.session.commit()
@@ -605,18 +635,149 @@ def login():
             flash('Credenciales inválidas. Verifica tu correo.', 'danger')
             return redirect(url_for('login'))
 
-    state = secrets.token_urlsafe(32)
-    session['oauth_state'] = state
-    session.permanent = True
-    auth_url = "#"
+    # GET: Mostrar página de login con URL de Microsoft si está configurado
+    auth_url = None
+    if msal_app:
+        try:
+            # Generar URL de autorización de Microsoft
+            auth_url = msal_app.get_authorization_request_url(
+                scopes=AZURE_SCOPE,
+                redirect_uri=url_for('microsoft_callback', _external=True),
+                state=secrets.token_urlsafe(32)
+            )
+            print(f"🔵 URL de Microsoft generada: {auth_url[:100]}...")
+        except Exception as e:
+            print(f"❌ Error generando URL de Microsoft: {e}")
+            flash('Error al configurar login con Microsoft', 'warning')
+
     return render_template('login.html', auth_url=auth_url, now=datetime.now)
+
+
+# ============================================================================
+# AUTENTICACIÓN CON MICROSOFT AZURE
+# ============================================================================
+
+@app.route('/auth/microsoft/callback')
+def microsoft_callback():
+    """Callback de Microsoft Azure AD después del login"""
+    code = request.args.get('code')
+    error = request.args.get('error')
+    error_description = request.args.get('error_description')
+    
+    # Verificar errores
+    if error:
+        flash(f'Error en autenticación con Microsoft: {error_description or error}', 'danger')
+        return redirect(url_for('login'))
+    
+    if not code:
+        flash('No se recibió código de autorización', 'danger')
+        return redirect(url_for('login'))
+    
+    if not msal_app:
+        flash('Microsoft Azure no está configurado correctamente', 'danger')
+        return redirect(url_for('login'))
+    
+    try:
+        # Intercambiar código por token
+        result = msal_app.acquire_token_by_authorization_code(
+            code=code,
+            scopes=AZURE_SCOPE,
+            redirect_uri=url_for('microsoft_callback', _external=True)
+        )
+        
+        if 'error' in result:
+            flash(f'Error al obtener token: {result.get("error_description", "Error desconocido")}', 'danger')
+            return redirect(url_for('login'))
+        
+        # Obtener información del usuario desde el token ID
+        id_token = result.get('id_token_claims', {})
+        
+        # Extraer datos del usuario
+        user_email = id_token.get('email') or id_token.get('preferred_username') or id_token.get('unique_name')
+        user_name = id_token.get('name', '')
+        azure_id = id_token.get('oid') or id_token.get('sub')
+        first_name = id_token.get('given_name', '')
+        last_name = id_token.get('family_name', '')
+        
+        if not user_email:
+            flash('No se pudo obtener el correo del usuario desde Microsoft', 'danger')
+            return redirect(url_for('login'))
+        
+        # Buscar usuario existente
+        usuario = Usuario.query.filter_by(email=user_email.lower()).first()
+        
+        if not usuario:
+            # Crear nuevo usuario con datos de Azure
+            nombre = first_name or (user_name.split(' ')[0] if user_name else 'Usuario')
+            apellido = last_name or (user_name.split(' ')[1] if user_name and len(user_name.split(' ')) > 1 else '')
+            
+            usuario = Usuario(
+                email=user_email.lower(),
+                nombre=nombre,
+                apellido=apellido,
+                azure_id=azure_id,
+                rol='usuario',  # Por defecto usuario normal
+                activo=True,
+                fecha_registro=datetime.utcnow()
+            )
+            db.session.add(usuario)
+            db.session.commit()
+            flash('¡Cuenta creada exitosamente con Microsoft!', 'success')
+        else:
+            # Actualizar datos existentes si es necesario
+            if not usuario.azure_id and azure_id:
+                usuario.azure_id = azure_id
+            if not usuario.nombre and first_name:
+                usuario.nombre = first_name
+            if not usuario.apellido and last_name:
+                usuario.apellido = last_name
+            
+            # Verificar si la cuenta está activa
+            if not usuario.activo:
+                flash('Tu cuenta está desactivada. Contacta al administrador.', 'danger')
+                return redirect(url_for('login'))
+            
+            db.session.commit()
+            flash(f'Bienvenido de vuelta {usuario.nombre}!', 'success')
+        
+        # Iniciar sesión
+        login_user(usuario, remember=True)
+        session.permanent = True
+        session['user_id'] = usuario.id
+        session['user_email'] = usuario.email
+        session['user_name'] = usuario.nombre
+        session['user_rol'] = usuario.rol
+        session['auth_provider'] = 'microsoft'
+        
+        # Actualizar último acceso
+        usuario.ultimo_acceso = datetime.utcnow()
+        db.session.commit()
+        
+        return redirect(url_for('dashboard'))
+        
+    except Exception as e:
+        app.logger.error(f"Error en callback Microsoft: {str(e)}")
+        flash('Error al procesar la autenticación con Microsoft. Intenta nuevamente.', 'danger')
+        return redirect(url_for('login'))
 
 
 @app.route('/logout')
 @login_required
 def logout():
+    # Obtener información de la sesión antes de cerrarla
+    auth_provider = session.get('auth_provider')
+    
+    # Cerrar sesión local
     logout_user()
     session.clear()
+    
+    flash('Sesión cerrada exitosamente', 'info')
+    
+    # Si inició sesión con Microsoft, redirigir a logout de Microsoft también
+    if auth_provider == 'microsoft' and msal_app:
+        microsoft_logout_url = f"https://login.microsoftonline.com/{AZURE_TENANT_ID}/oauth2/v2.0/logout?post_logout_redirect_uri={url_for('login', _external=True)}"
+        return redirect(microsoft_logout_url)
+    
     return redirect(url_for('login'))
 
 
